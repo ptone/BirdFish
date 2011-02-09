@@ -1,0 +1,77 @@
+
+[quote author=csf link=topic=3678.msg67812#msg67812 date=1290447520]
+
+ I will point out a few things though that I do believe to be differences. 
+
+First basically think of my program as a cross between q lights and vixen. 
+
+The program will not eliminate a grid completely but will use the grid in an entirely new way. Think of rows as layers then channels. 
+
+Channels will be groped, effects placed on to groups, and then effects / groups added to the time line.  
+
+[/quote]
+
+So will the timeline be segmented in some way - or just time.  Both Prancer and Nestor (my working title) represent events just in time, with no assumptions about how that time is divided (at least that is what I understand about Prancer - its true of my project).  The advantage is that you abstract the rendering of effects from the way they are sent out over your signaling protocol.
+
+
+[quote author=csf link=topic=3678.msg67812#msg67812 date=1290447520]
+
+This program will also be open source, which is a big plus for me. I rather be able to use a program I can customize and change then a program I am stuck with.
+
+Also one of the biggest motivations for me is my want to be able to sequence using my MAC. I know prancer will be PC only since it requires .net I am not sure about your program yet, but I don't remember any thing about what OS you are supporting. 
+[/quote]
+
+Mine will be open source once it is in a bit more shape - happy to share in it's current state for anyone to take a look (no docs, lots of test code, hacky bits etc).  I develop exclusively on a Mac, and am using Python for this - so in theory it should be cross platform.  But given the open source libraries it uses, will be easier to get working on linux than on win32.
+
+As my project is starting to mature a bit - let me outline some of my approach.
+
+I do assume channels over a signaling protocol and really just focusing on DMX.  The fundamental object of the system is a LightUnit.
+
+A show object is a collection of light units.  The show handles the runloop at some given framerate, and in each loop gets current values for the various channels from each lightunit that has channel data to share (not all units have channel data, as we will see), and sends it out to a controller, currently I run this loop at somewhere between 40-100hz, depending on some factors and the fixtures involved.
+
+A light unit may have channels of output, but might have other properties as well.  In the simple case, the main attribute mapped to a channel would be it's current intensity (0-255).  Each time through the show loop, the show asks a simple light unit for its channel data - if it has intensity as a channel value, then the DMX universe gets updated with that value.  But a light unit might also have a set of attributes related to a fade envelope, which modifies the intensity value over time to control a ramp up and ramp off behavior (attack, and release).  
+
+LightUnit represents a base class, upon which many subclasses might be built.
+
+For example I currently have:
+
+LightUnit
+    RGBLight
+        StageApePar38 (a specific Par38 DMX fixture)
+
+An RGB light can have a Hue property, that will auto adjust R, G, and B channels when it is changed.  So if you have something like:
+
+tree_flood = RGBLight()
+tree_flood.hue = .3 # from 0-1 = 365 degrees of Hue in HSV color space
+
+this will auto set the R,G,B attributes, which themselves are mapped to channels
+
+A lightUnit need not be a light - there are subclasses for groups of lights, there are subclasses that handle chases.  In these cases, the units don't output channel data themselves, but on each update of the show, may change values of their light elements.
+
+Speed of a chase, changes in color or brightness etc can all be "tweened", that is changed in a non-linear way corresponding to a curve function, this option for non-linearity is key to an organic appearance.
+
+Now all these lightunits are sitting bundled up in a show that asks them for  current state - how do they change over time, what is causing the change?
+
+The lightunits (including chases etc) respond to a trigger or signal.  A signal may just change some property (for example increase the decay rate of the fade), or may trigger the light to come on, or sequence to start with some initial value.
+
+These signals my come from some form of realtime input, or may come from a file of pre-recorded events.  The key is that this signal layer does not contain the detail of information that ultimately goes out to the light channels.  A single trigger event may start a chase sequence of 25 lights, each of which have attributes that cause them to fade out slowly after coming on.  So what you have in effect is a rendering of the channel data from the signal data through a set of lightunits that define behaviors.  This is the key element to this design.
+
+There can be multiple, alternate methods of generating the signals.  One of the main methods is MIDI.  MIDI was design to capture the expressive performance of musicians.  When I think of good light shows, I think of something that has the fluidity of Dance or Music.  Many many of the vixen sequenced light shows have a very mechanical techno blinky look to them, and I think this comes from having to sequence while staring at a screen and imagining the music and how the lights might look - very hard to do, and so you end up with something that is not all that organic in appearance.  The idea with MIDI is to reverse the standard way people sequence their shows.  Which involves planning them out, then sequencing, then installing the lights.  The previews do help a lot with this - but I want to just put up the lights with some idea of structure, pick a song, go out into my front yard and play the lights on the keyboard (laptop, or MIDI).  I want to be able to easily improvise along with the music.  Doing multiple "tracks" of this so first I might just play the drum part - next record a bass part (while the drum part plays back on the lights). Ultimately I want to spend only 10-15 minutes sequencing!  MIDI is also something out there that has some great sequencing software already - so a GUI editor comes "free" with that.
+
+Now MIDI note messages to light triggers is the obvious part of the signaling, but there is also MIDI control data.  I have this cheap little MIDI keyboard, and it has 10 dials and a couple sliders etc.  These send MIDI controller messages.  In my software I map these to other attributes.  For example the speed of a chase, or the color of a light, or the frequency of a strobe effect etc, so you can tune the behaviors of lights at runtime.
+
+Once all these tracks are recorded - they can be played back as a sequence.  But if you want to change the drum part to another set of lights, the signal data is not bound to certain DMX channels, and you can redirect that signal to different lightunit(s).  Keeping these two parts of the process separate keeps things flexible - but could result in some performance issues.  If the complexity of the show is too great for the CPU of the machine to process in realtime, then there is the option that the show could be "compiled/rendered" into raw channel value files (or even a vixen file).  But because the behaviors are based on time, and not frames, the framerate can be reduced for the live recording part (reducing CPU load) and then cranked up for the compile/render of the final channel data for higher resolution, smoother fades.
+
+In addition to MIDI, one could also trigger lights with the Kinect sensor as demoed, or an iPhone touch interface (I have the first one working in rough form, and plan to do the iPhone one - they actually are very similar in some ways).
+
+I've also added some features more applicable to a theater setting - but could be fun in the blinky context.  The idea of a set of scenes and transitions.  So you can have a certain set of values for all your lights and define that as a scene.  You can then transition to any other defined scene, and all of the changes needed will be blended from any one scene to any other - these could be useful for floods that you want to change in response to chord changes in a song etc.
+
+Whew - so there you have it, a pretty long explanation of what I'm working on - like I said, no GUI planned, but I want to get the fundamental ideas nailed down in code.  Also it would be hard to come up with a GUI that gives you all the power exposed in such a framework.
+
+What language/framework were you planning to use?  You can see from the Prancer effort, this is no small task.
+
+-Preston
+
+
+sequence docs:
+
