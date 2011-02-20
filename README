@@ -1,11 +1,9 @@
+Birdfish
+========
 
-         --------  Birdfish  -------
-
-a Python Object oriented Lighting Control tool
+A Python object oriented lighting control framework
 
 
 Birdfish is a Python module that seeks to provide an representation of 
 electronic lighting in the form of Python objects.  The goal is to simplify 
 the task of generating sequences of high count, rapidly changing control signals.
-
-

@@ -13,24 +13,25 @@ of options are relatively limited, but here is a list of what is planned:
 Inputs
 ------
 
-PC Keyboard
-MIDI (file or live input) *
-Event File (A Birdfish specific format for recording events)*
-OSC (Open Sound Control)
-Kinect*
-Touch Devices *
-Web Console
+ * PC Keyboard *
+ * MIDI (file or live input) **
+ * Event File (A Birdfish specific format for recording events)
+ * OSC (Open Sound Control) *
+ * Kinect **
+ * Touch Devices **
+ * Web Console *
 
 Outputs
 -------
 
-OLA DMX (E1.31, USB) * [http://www.opendmx.net/index.php/OLA]
-PixelNet
-Renard
-LOR
-Event File *
-Vixen File
-DMX USB (pure python)
-E1.31 (pure python)
+ * `OLA DMX <http://www.opendmx.net/index.php/OLA>`_ (E1.31, USB) 
+ * PixelNet *
+ * Renard *
+ * LOR *
+ * Event File **
+ * Vixen File *
+ * DMX USB (pure python) *
+ * E1.31 (pure python) *
 
-* fully or partially implemented
+_   * not yet implemented
+_  ** partially implemented

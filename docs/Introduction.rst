@@ -26,7 +26,7 @@ this basic form, it offers some powerful features.  Because a LightElement is
 a object in software, it can have attributes that you can set.  For an RGB
 light, a LightElement would wrap the three channels into one object.
 
-Events control LightElements
+Events control Light Elements
 ----------------------------
 
 Events are the things that happen at a specific time to control a LightElement.
