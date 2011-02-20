@@ -1,6 +1,6 @@
 import array
 from collections import deque
-import colorsysj
+import colorsys
 # from ola.OlaClient import OlaClient, Universe
 # import client_wrapper
 import copy
@@ -13,12 +13,13 @@ import math
 from scene import SceneManager
 from birdfish.output.base import DefaultNetwork
 
+
 frame_rate = 30
 
 class BaseLightElement(object):
     """docstring for BaseLightElement"""
 
-"""@@ possible additions to support overlay:
+    """@@ possible additions to support overlay:
     if when the value of a channel attribute is changed, set a flag containing
     show timecode.  When a subsequent meta element goes to change a value, it
     checks this flag, and if set to current show timecode, will only change the
