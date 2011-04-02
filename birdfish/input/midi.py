@@ -123,7 +123,7 @@ class MidiDispatcher(threading.Thread):
                 if type[0].lower() == 't':
                    # trigger type
                    vel = data = message[0][2] * 2
-                   recv.trigger(vel)
+                   recv.trigger(vel, key=message_key)
                    if self.logger:
                        self.logger.log_event(recv,type,data)
                 elif type[0].lower() == 'm':

@@ -75,10 +75,10 @@ Remove	pytweener.py	/^    def Remove(self):$/;"	m	class:Tween
 Run	client_wrapper.py	/^  def Run(self):$/;"	m	class:ClientWrapper	access:public
 Run	output/ola.py	/^  def Run(self):$/;"	m	class:ClientWrapper
 Run	output/oladmx.py	/^  def Run(self):$/;"	m	class:ClientWrapper
-Scene	scene.py	/^class Scene(object):$/;"	c	inherits:object
-SceneElement	scene.py	/^class SceneElement(object):$/;"	c	inherits:object
-SceneManager	scene.py	/^class SceneManager(object):$/;"	c	inherits:object
-SceneSetter	scene.py	/^class SceneSetter(object):$/;"	c	inherits:object
+Scene	scene.py	/^class Scene(object):$/;"	c
+SceneElement	scene.py	/^class SceneElement(object):$/;"	c
+SceneManager	scene.py	/^class SceneManager(object):$/;"	c
+SceneSetter	scene.py	/^class SceneSetter(object):$/;"	c
 StageApe64RGB	stageape.py	/^class StageApe64RGB(RGBLight):$/;"	c	inherits:RGBLight
 StageApeLight	stageape.py	/^class StageApeLight(RGBLight):$/;"	c	inherits:RGBLight
 StageApeScreen	stageape.py	/^class StageApeScreen(RGBLight):$/;"	c	inherits:RGBLight
@@ -122,7 +122,7 @@ __init__	midi_reader.py	/^    def __init__(self, queue):$/;"	m	class:MessageDisp
 __init__	midi_reader.py	/^    def __init__(self,device):$/;"	m	class:MidiDispatcher	access:public
 __init__	midi_reader.py	/^    def __init__(self,device, queue):$/;"	m	class:MidiReader	access:public
 __init__	output/base.py	/^    def __init__(self):$/;"	m	class:BaseNetwork
-__init__	output/base.py	/^    def __init__(self, args):$/;"	m	class:DefaultNetwork
+__init__	output/base.py	/^    def __init__(self):$/;"	m	class:DefaultNetwork
 __init__	output/file.py	/^    def __init__(self, file=None):$/;"	m	class:EventWriter
 __init__	output/file_writer.py	/^    def __init__(self, file=None):$/;"	m	class:EventWriter
 __init__	output/ola.py	/^    def __init__(self,universe):$/;"	m	class:OLA
@@ -140,14 +140,15 @@ __init__	pytweener.py	/^    def __init__(self):$/;"	m	class:TweenTestObject
 __init__	pytweener.py	/^    def __init__(self):$/;"	m	class:Tweener
 __init__	pytweener.py	/^    def __init__(self, obj, tduration, tweenType, completeFunction, updateFunction, delay, **kwargs):$/;"	m	class:Tween
 __init__	pytweener.py	/^    def __init__(self, start, change):$/;"	m	class:Tweenable
-__init__	scene.py	/^    def __init__(self):$/;"	m	class:SceneManager	access:public
-__init__	scene.py	/^    def __init__(self, *args, **kwargs):$/;"	m	class:Scene	access:public
-__init__	scene.py	/^    def __init__(self, *args, **kwargs):$/;"	m	class:SceneSetter	access:public
-__init__	scene.py	/^    def __init__(self, light=None, values={}, delay=0, duration=3):$/;"	m	class:SceneElement	access:public
+__init__	scene.py	/^    def __init__(self):$/;"	m	class:SceneManager
+__init__	scene.py	/^    def __init__(self, *args, **kwargs):$/;"	m	class:Scene
+__init__	scene.py	/^    def __init__(self, *args, **kwargs):$/;"	m	class:SceneSetter
+__init__	scene.py	/^    def __init__(self, light=None, values={}, delay=0, duration=3):$/;"	m	class:SceneElement
 __init__	stageape.py	/^    def __init__(self, *args, **kwargs):$/;"	m	class:StageApe64RGB	access:public
 __init__	stageape.py	/^    def __init__(self, *args, **kwargs):$/;"	m	class:StageApeLight	access:public
 __init__	stageape.py	/^    def __init__(self, *args, **kwargs):$/;"	m	class:StageApeScreen	access:public
 __init__	stageape.py	/^    def __init__(self, *args, **kwargs):$/;"	m	class:StageApeWhite64	access:public
+__version__	__init__.py	/^__version__ = '0.1.0'$/;"	v
 _get_hue	lights.py	/^    def _get_hue(self):$/;"	m	class:RGBLight
 _get_saturation	lights.py	/^    def _get_saturation(self):$/;"	m	class:RGBLight
 _set_hue	lights.py	/^    def _set_hue(self,hue):$/;"	m	class:RGBLight
@@ -155,7 +156,7 @@ _set_saturation	lights.py	/^    def _set_saturation(self,saturation):$/;"	m	clas
 addTween	pytweener.py	/^    def addTween(self, obj, **kwargs):$/;"	m	class:Tweener
 add_element	lights.py	/^    def add_element(self,element,network=None):$/;"	m	class:LightShow
 add_element	output/base.py	/^    def add_element(self, element):$/;"	m	class:BaseNetwork
-add_element	scene.py	/^    def add_element(self,light=None, values={}, delay=0, duration=3):$/;"	m	class:Scene	access:public
+add_element	scene.py	/^    def add_element(self,light=None, values={}, delay=0, duration=3):$/;"	m	class:Scene
 add_elements	output/base.py	/^    def add_elements(self,lights):$/;"	m	class:BaseNetwork
 add_file	input/file.py	/^    def add_file(self,f):$/;"	m	class:FileMerger
 add_light	pandaviewer.py	/^    def add_light(self,lightobj):$/;"	m	class:PandaViewer	access:public
@@ -202,10 +203,10 @@ getTweenable	pytweener.py	/^    def getTweenable(self, name):$/;"	m	class:Tween
 getTweensAffectingObject	pytweener.py	/^    def getTweensAffectingObject( self, obj ):$/;"	m	class:Tweener
 get_named_element	lights.py	/^    def get_named_element(self,name):$/;"	m	class:LightShow
 get_named_element	output/base.py	/^    def get_named_element(self,name):$/;"	m	class:BaseNetwork
-get_scene	scene.py	/^    def get_scene(self):$/;"	m	class:SceneSetter	access:public
+get_scene	scene.py	/^    def get_scene(self):$/;"	m	class:SceneSetter
 get_tween_mode_func	lights.py	/^    def get_tween_mode_func (self,trigger_type="on"):$/;"	m	class:LightChase
 hasTweens	pytweener.py	/^    def hasTweens(self):$/;"	m	class:Tweener
-highlight_target	scene.py	/^    def highlight_target(self):$/;"	m	class:SceneSetter	access:public
+highlight_target	scene.py	/^    def highlight_target(self):$/;"	m	class:SceneSetter
 hue	lights.py	/^    hue = property(_get_hue,_set_hue)$/;"	v	class:RGBLight
 init_data	output/base.py	/^    def init_data(self):$/;"	m	class:BaseNetwork
 init_play	audioplayer.py	/^    def init_play(self,wavfile):$/;"	m	class:AudioPlayer
@@ -242,7 +243,7 @@ observers	player.py	/^    observers = {}$/;"	v	class:TriggerFilePlayer
 off	lights.py	/^    def off(self):$/;"	m	class:LightElement
 pause	audioplayer.py	/^    def pause(self):$/;"	m	class:AudioPlayer
 pause	pytweener.py	/^    def pause( self, numSeconds=-1 ):$/;"	m	class:Tween
-print_scene	scene.py	/^    def print_scene(self):$/;"	m	class:SceneSetter	access:public
+print_scene	scene.py	/^    def print_scene(self):$/;"	m	class:SceneSetter
 removeTween	pytweener.py	/^    def removeTween( tweenObj ):$/;"	m	class:Tweener
 removeTweeningFrom	pytweener.py	/^    def removeTweeningFrom( self, obj ):$/;"	m	class:Tweener
 reset	lights.py	/^    def reset(self):$/;"	m	class:LightChase
@@ -275,14 +276,14 @@ send_data	output/ola.py	/^    def send_data(self):$/;"	m	class:OLA
 send_data	output/oladmx.py	/^    def send_data(self):$/;"	m	class:OLA
 send_viewer_data	lights.py	/^    def send_viewer_data(self):$/;"	m	class:LightShow
 setRotation	pytweener.py	/^    def setRotation(self, rot):$/;"	m	class:TweenTestObject
-set_cue	scene.py	/^    def set_cue(self, message_key, scene):$/;"	m	class:SceneManager	access:public
+set_cue	scene.py	/^    def set_cue(self, message_key, scene):$/;"	m	class:SceneManager
 set_special_state	lights.py	/^    def set_special_state(self,state_dict):$/;"	m	class:LightElement
 set_special_state	lights.py	/^    def set_special_state(self,state_dict):$/;"	m	class:LightGroup
 setup	lights.py	/^    def setup(self):$/;"	m	class:LightChase
-sh	scene.py	/^def sh(cmd):$/;"	f	access:public
+sh	scene.py	/^def sh(cmd):$/;"	f
 signal	lightening.py	/^    def signal(self,message):$/;"	m	class:Lightening
-signal	scene.py	/^    def signal(self,message):$/;"	m	class:SceneManager	access:public
-signal	scene.py	/^    def signal(self,message):$/;"	m	class:SceneSetter	access:public
+signal	scene.py	/^    def signal(self, message):$/;"	m	class:SceneManager
+signal	scene.py	/^    def signal(self,message):$/;"	m	class:SceneSetter
 start	pandaviewer.py	/^    def start(self):$/;"	m	class:PandaViewer	access:public
 stop	audioplayer.py	/^    def stop(self):$/;"	m	class:AudioPlayer
 stop	input/file.py	/^    def stop(self):$/;"	m	class:BasicScheduledPlayer
@@ -295,7 +296,7 @@ stop	midi_reader.py	/^    def stop(self):$/;"	m	class:MidiReader	access:public
 stop	pandaviewer.py	/^    def stop(self):$/;"	m	class:PipeReader	access:public
 stop	player.py	/^    def stop(self):$/;"	m	class:BasicScheduledPlayer	access:public
 stop	player.py	/^    def stop(self):$/;"	m	class:TriggerFilePlayer	access:public
-switch_to_scene	scene.py	/^    def switch_to_scene(self,scene):$/;"	m	class:SceneManager	access:public
+switch_to_scene	scene.py	/^    def switch_to_scene(self,scene):$/;"	m	class:SceneManager
 time_test	input/file.py	/^    def time_test(self):$/;"	m	class:BasicScheduleComponent
 time_test	player.py	/^    def time_test(self):$/;"	m	class:BasicScheduleComponent	access:public
 trigger	audioplayer.py	/^    def trigger(self,data):$/;"	m	class:AudioPlayer
@@ -303,10 +304,11 @@ trigger	effects.py	/^    def trigger(self,trigger_intensity):$/;"	m	class:Modula
 trigger	lights.py	/^    def trigger(self, sig_intensity):$/;"	m	class:LightGroup
 trigger	lights.py	/^    def trigger(self,intensity):$/;"	m	class:LightChase
 trigger	lights.py	/^    def trigger(self,intensity):$/;"	m	class:LightElement
+trigger	scene.py	/^    def trigger(self, vel, key=None):$/;"	m	class:SceneManager
 trigger_tween_done	lights.py	/^    def trigger_tween_done(self,*args, **kwargs):$/;"	m	class:LightChase
 tst	pytweener.py	/^    tst = TweenTestObject()$/;"	v
 tween_done	lights.py	/^    def tween_done(self):$/;"	m	class:LightElement
-tween_done_logger	scene.py	/^def tween_done_logger(*args, **kwargs):$/;"	f	access:public
+tween_done_logger	scene.py	/^def tween_done_logger(*args, **kwargs):$/;"	f
 update	effects.py	/^    def update(self,show):$/;"	m	class:ModulationCycle
 update	lightening.py	/^    def update(self,show):$/;"	m	class:Lightening
 update	lights.py	/^    def update(self):$/;"	m	class:LightShow
@@ -318,7 +320,7 @@ update	pandaviewer.py	/^    def update(self,dmx):$/;"	m	class:PandaViewer	access
 update	pytweener.py	/^    def update(self):$/;"	m	class:TweenTestObject
 update	pytweener.py	/^    def update(self, ptime):$/;"	m	class:Tween
 update	pytweener.py	/^    def update(self, timeSinceLastFrame):$/;"	m	class:Tweener
-update	scene.py	/^    def update(self,show):$/;"	m	class:SceneManager	access:public
+update	scene.py	/^    def update(self,show):$/;"	m	class:SceneManager
 update_data	lights.py	/^    def update_data(self,data):$/;"	m	class:BaseLightElement
 update_data	output/base.py	/^    def update_data(self):$/;"	m	class:BaseNetwork
 update_hue	lights.py	/^    def update_hue(self):$/;"	m	class:RGBLight

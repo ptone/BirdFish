@@ -49,7 +49,7 @@ class BaseNetwork(object):
         raise NotImplementedError
 
 class DefaultNetwork(BaseNetwork):
-    def __init__(self, args):
+    def __init__(self):
         super(DefaultNetwork, self).__init__()
 
     def send_data(self):

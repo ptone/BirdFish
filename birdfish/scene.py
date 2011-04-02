@@ -15,10 +15,10 @@ def sh(cmd):
 
 
 class SceneSetter(object):
-    
+
     def __init__(self, *args, **kwargs):
         super(SceneSetter, self).__init__(*args, **kwargs)
-        
+
         self.mappings = {   (176,14): "intensity",
                             (176,15): "hue",
                             (176,16): "saturation"}
@@ -26,7 +26,7 @@ class SceneSetter(object):
         self.target_map =  {} #{ (144,41):somelightobj}
         self.highlight_signal = (144,48)
         self.print_scene_signal = (144,49)
-    
+
     def highlight_target(self):
         """ show only the target light"""
         current_intensity = self.target.intensity
@@ -37,7 +37,7 @@ class SceneSetter(object):
             time.sleep(.1)
         self.target.intensity = current_intensity
 
-        
+
     def signal(self,message):
         # [[144, 42, 127, 0], 6463]
         message_key = tuple(message[0][:2])
@@ -69,7 +69,7 @@ class SceneSetter(object):
                 return
         if message_key == self.print_scene_signal and not message_data[0]:
             self.print_scene()
-            
+
     def get_scene(self):
         """exports code/text that can be used to create a scene"""
         scene_dict = {}
@@ -85,13 +85,13 @@ class SceneSetter(object):
                     element_dict[attr] = getattr(element,attr)
             scene_dict[name] = element_dict
         return scene_dict
-    
+
     def print_scene(self):
         scene = self.get_scene()
         pprint(scene)
         # more macos specific stuff @@
         # output = StringIO.StringIO()
-        #      
+        #
         #      # contents = output.getvalue()
         #      # print contents
         #      # sh('echo %s | pbcopy' % contents)
@@ -118,7 +118,7 @@ class Scene(object):
     def __init__(self, *args, **kwargs):
         self.elements = kwargs.get("elements",[])
         self.name = kwargs.get("name","scene")
-        
+
 
     def add_element(self,light=None, values={}, delay=0, duration=3):
         E = SceneElement(light=light, values=values, delay=delay, duration=duration)
@@ -131,7 +131,7 @@ def tween_done_logger(*args, **kwargs):
     pass
 
 class SceneManager(object):
-    """ manages the transition from one scene to another 
+    """ manages the transition from one scene to another
 
     sets up a tween for each value from current value to new value
 
@@ -168,7 +168,7 @@ class SceneManager(object):
                 if not hasattr(element.light,k): continue
                 current_value = getattr(element.light, k)
                 if v == current_value:
-                    # print "skipping %s alread %s" % (k,v) 
+                    # print "skipping %s alread %s" % (k,v)
                     continue # no need to tween
                 changes[k] = v - current_value
             # print "changes:"
@@ -176,10 +176,10 @@ class SceneManager(object):
             if changes:
                 # print "currently have %s tweens" % len(self.tweener.currentTweens)
                 self.tweener.addTween(  element.light,
-                                        tweenTime=element.duration, 
-                                        tweenDelay=element.delay, 
+                                        tweenTime=element.duration,
+                                        tweenDelay=element.delay,
                                         tweenType=tween,
-                                        onCompleteFunction=tween_done_logger, 
+                                        onCompleteFunction=tween_done_logger,
                                         **changes)
                 self.switching = True
 
@@ -187,7 +187,7 @@ class SceneManager(object):
         self.cues[message_key] = scene
 
     def update(self,show):
-        if not self.switching: 
+        if not self.switching:
             self.last_update = 0
             return False
         if not self.tweener.hasTweens():
@@ -205,9 +205,12 @@ class SceneManager(object):
         self.tweener.update(time_delta)
         return True
 
-    def signal(self,message):
+    def signal(self, message):
         message_key = tuple(message[0][:2])
         vel = message[0][2]
         if vel and message_key in self.cues:
             self.switch_to_scene(self.cues[message_key])
-        
+
+    def trigger(self, vel, key=None):
+        if vel and key in self.cues:
+            self.switch_to_scene(self.cues[key])

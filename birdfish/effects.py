@@ -14,7 +14,7 @@ NORMAL = 1
 DARKEN = 2
 LIGHTEN = 3
 
-# @@ really just need a CycleSegment, using classes can ask about it's tween or duration as needed
+# really just need a CycleSegment, using classes can ask about it's tween or duration as needed
 class CycleSegment(object):
     def __init__(self,*args, **kwargs):
         self.duration = kwargs.get("duration",1)
@@ -29,7 +29,6 @@ class CycleTransitionSegment(CycleSegment):
 # @@ Need a segment generator class
 # which would have a duration and then be able to generate effects segments 
 # per its own algorithm.  Good for things like flicker or lightening.
-# can also have its own duration
 
 class ModulationCycle(LightGroup):
     """Notes:

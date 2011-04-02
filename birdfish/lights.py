@@ -402,7 +402,7 @@ class LightChase(LightGroup):
     uses tween_off
 
     Other paremeters:
-    @@ loop_delay - delay between a loop ending, and starting again
+    loop_delay - delay between a loop ending, and starting again
     antialias
     randomize - if true, will randomize the order of elements each time through
     element_initialize - a dictionary of parameters to initialize each element
