@@ -14,3 +14,5 @@ Install
 =======
 
 For full installation, see the docs/installation.
+
+Full docs `online at readthedocs.org <http://readthedocs.org/docs/birdfish/en/latest/index.html>`_
