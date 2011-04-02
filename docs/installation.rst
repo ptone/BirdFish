@@ -25,7 +25,8 @@ Install OLA Python bindings
 
 Unfortunately OLA does not include the Python bindings with the installer.
 I have provided a separate installer for these bindings which can be downloaded
-from here
+from [coming soon - for now you'll need to build from source and include python
+bindings in build flags]
 
 Installing portmidi for MIDI support
 ------------------------------------
@@ -40,6 +41,9 @@ keyboard you can download a `software MIDI controller <http://www.manyetas.com/c
 
 Install Birdfish
 ----------------
+
+[**note** for now the only way to install BirdFish is from GitHub, once a true
+release is cut, pip installs will be available]
 
 If you haven't already, install the birdfish python module.  This is best
 accomplished by just running ``pip install birdfish``.  However if you are
