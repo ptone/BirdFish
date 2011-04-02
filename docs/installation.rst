@@ -32,7 +32,8 @@ Installing portmidi for MIDI support
 
 Portmidi is part of the PortMedia project and a preconfigured binary installer
 can be downloaded here for OS X 10.6.  It can also be downloaded and compiled
-from source using :doc:`portmidinotes`.
+from source using :doc:`portmidinotes`. I'm working on a binary installer which
+should will make this step much easier.
 
 You will need some for of MIDI input.  If you do not have a physical MIDI
 keyboard you can download a `software MIDI controller <http://www.manyetas.com/creed/midikeys.html>`_
