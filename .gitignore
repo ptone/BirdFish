@@ -3,6 +3,8 @@
 # editor temp files
 *~
 
+tags
+
 tmp/**/*
 *.lock
 *.DS_Store
