@@ -14,14 +14,14 @@ class StageApeLight(RGBLight):
         self.red = 255
         self.green = 255
         self.blue = 255
-        
+
     # def trigger(self, *args, **kwargs):
     #     print "stageape trigger"
     #     print args
     #     print kwargs
     #     super(StageApeLight, self).trigger(*args, **kwargs)
     #
-    
+
 class StageApeWhite64(LightElement):
     def __init__(self, *args, **kwargs):
         super(StageApeWhite64, self).__init__(*args, **kwargs)
@@ -57,9 +57,20 @@ class StageApeScreen(RGBLight):
         self.channels[startchannel+5] = 'intensity'
         self.color_change = 0
         self.strobe = 0
-        
-        
-        
-        
-        
-        
+        # self.red = 255
+        # self.green = 255
+        # self.blue = 255
+        # self.intensity = 0
+
+    def update(self, show, **kwargs):
+        super(StageApeScreen, self).update(show, **kwargs)
+        if self.name == "floorscr1":
+            # print self.intensity
+            # print self.red #, self.green, self.blue
+            pass
+
+
+
+
+
+
