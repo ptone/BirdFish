@@ -236,17 +236,34 @@ class RGBLight(LightElement):
     def __init__(self, *args, **kwargs):
         super(RGBLight, self).__init__(*args, **kwargs)
         # need to add in the self.channels[start_channel+n] = 'red'
+        start_channel = kwargs.get('start_channel', 1)
         self.red = 0
         self.green = 0
         self.blue = 0
         self._hue = 0.0
-        self._saturation = 255
+        self._saturation = 0
+        self.channels[start_channel] = 'red'
+        self.channels[start_channel+1] = 'green'
+        self.channels[start_channel+2] = 'blue'
         # set up rgb values
+
+    # def trigger(self, intensity, **kwargs):
+        # self.intensity = intensity
+        # self.update_rgb()
+        # super(RGBLight, self).trigger(intensity, **kwargs)
+
+    def update(self, show):
+        return_value =  super(RGBLight, self).update(show)
+        # TODO - this funciton needed when tweening hue - but can't be used 
+        # tweening RGB directly
+        # self.update_rgb()
+        return return_value
 
     # @@ need to address the attribute of intensity in the context of RGB
     def update_hue(self):
         """updates hue property from RGB values, RGB is always updated when hue changed"""
-        adjusted_rgb = [(x/255.0)*(self.intensity/255.0) for x in [self.red,self,green,self.blue]]
+        adjusted_rgb = [(x/255.0)*(self.intensity/255.0) for x in [
+            self.red, self.green, self.blue]]
         h,s,v = colorsys.rgb_to_hsv(*tuple(adjusted_rgb))
         # hue and saturation stay as 0-1 values, not 0-255 since they are assumed to be not DMX
         self._hue = h * 255
@@ -256,19 +273,18 @@ class RGBLight(LightElement):
 
     def update_rgb(self):
         hue = self._hue/255
-        saturation = self._saturation/255
+        saturation = self._saturation/255.0
         if 'intensity' in self.channels.values():
             # if the fixture has its own intensity slider - always calc RGB values at full intensity
             intensity = 1
         else:
-            intensity = self.intensity/255
+            intensity = self.intensity/255.0
         # this funct takes all 0-1 values
         r,g,b = colorsys.hsv_to_rgb(hue,saturation, intensity)
-        # print r,g,b
         # here intensity is assumed to be full, as HSV to RGB sets RGB values accordingly
-        self.red = r * 255
-        self.green = g * 255
-        self.blue = b * 255
+        self.red = r * 255.0
+        self.green = g * 255.0
+        self.blue = b * 255.0
         # self.intensity = 255
 
     def _get_hue(self):
