@@ -8,11 +8,14 @@ import time
 import socket
 # import select
 import random
+import logging
 import pytweener
 import math
 from scene import SceneManager
 from birdfish.output.base import DefaultNetwork
 
+
+logger = logging.getLogger(__name__)
 
 frame_rate = 30
 
@@ -37,13 +40,13 @@ class BaseLightElement(object):
         self.last_updated = 0
         self.channels[start_channel] = 'intensity'
         self.frame_rate = 40
-        # print self.channels
 
     def update_data(self,data):
         """data is an array of data (ie DMX) that should be updated with this light's channels"""
         for channel, value in self.channels.items():
+
             # if channel == 2:
-            #                print '%s, %s, %s' % (channel, value, int(getattr(self,value)))
+                           # print '%s, %s, %s' % (channel, value, int(getattr(self,value)))
             val = int(getattr(self,value))
             data[channel-1] = int(val)
             # no easy way to have more than one light on the same channel
@@ -71,6 +74,8 @@ class LightElement(BaseLightElement):
         self.bell_mode = False
         self.last_update = 0
         self.shape_tween = False
+        self.name = kwargs.get("name","unnamed_LightElement")
+        self.logger = logging.getLogger("%s.%s.%s" % (__name__, "LightElement", self.name))
 
     def set_special_state(self,state_dict):
         defaults = self.__dict__.copy()
@@ -83,10 +88,10 @@ class LightElement(BaseLightElement):
         if hasattr(self,"defaults"):
             self.__dict__.update(self.defaults)
 
-    def update(self,show):
+    def update(self, show):
         if hasattr(self,'debug'):
             if self.intensity and self.env_phase == 4:
-                print self.intensity
+                self.logger.debug("intensity: %s" % self.intensity)
             # if self.env_phase:
                 # print self.env_phase
         if (not (self.intensity or self.trigger_intensity)) or self.env_phase == 3:
@@ -159,17 +164,17 @@ class LightElement(BaseLightElement):
             self.intensity = self.env_phase = self.trigger_intensity = 0
     
     def do_release(self):
-        print "release"
+        logger.debug("release")
         if self.release:
-            print "has release tween"
+            self.logger.debug("has release tween")
             self.env_phase = 4
             self.add_shape_tween('release')
         else:
-            print "no tween, shutting off"
+            self.logger.debug("no tween, shutting off")
             self.intensity = self.env_phase = self.trigger_intensity = 0
 
     def tween_done(self):
-        print "tween done"
+        self.logger.debug("tween done")
         # this update will clear out completed tweens to hasTweens will return correct value
         self.tweener.update(0)
 
@@ -190,19 +195,19 @@ class LightElement(BaseLightElement):
                 )
         self.last_update = 0
 
-    def trigger(self,intensity):
+    def trigger(self, intensity, **kwargs):
         """Trigger a light with code instead of midi"""
         # @@ need toggle mode implementation here
         if intensity > 0: # or note off message
             if self.tweener.hasTweens() and self.bell_mode:
-                print "ignoring on trigger"
+                self.logger.debug("ignoring on trigger")
                 return
             self.trigger_intensity = intensity
-            print "trigger on"
+            self.logger.debug("trigger on")
             self.intensity = 0 # reset light on trigger
             self.env_phase = 1
             if self.attack:
-                print "has attack - adding tween"
+                self.logger.debug("has attack - adding tween")
                 self.add_shape_tween('attack')
             else:
                 self.intensity = intensity
@@ -212,14 +217,14 @@ class LightElement(BaseLightElement):
                 return
             elif self.release:
                 self.trigger_intensity = intensity
-                print "trigger off - release"
+                self.logger.debug("trigger off - release")
                 self.do_release()
             else:
                 if hasattr(self.shape_tween,'complete'):
                     # clear out previous tween
-                    print "cancelling tween"
+                    self.logger.debug("cancelling tween")
                     self.shape_tween.complete = True
-                print "trigger off, no release, shutting off"
+                self.logger.debug("trigger off, no release, shutting off")
                 self.intensity = self.env_phase = self.trigger_intensity = 0
 
 
@@ -320,6 +325,8 @@ class LightGroup(BaseLightElement):
             self.elements = list(e)
         self.intensity_overide = 0
         self.element_initialize = {}
+        self.logger = logging.getLogger("%s.%s.%s" % (__name__, "LightGroup", self.name))
+        
     # @@ problematic - problems with __init__ in base classes:
     # def __setattr__(self,key,val):
     #     local_keys = ['name','intensity_overide','element_initialize','elements']
@@ -329,7 +336,7 @@ class LightGroup(BaseLightElement):
     #         for l in self.elements:
     #             setattr(l,key,val)
 
-    def trigger(self, sig_intensity):
+    def trigger(self, sig_intensity, **kwargs):
         if sig_intensity:
             intensity = self.intensity_overide or sig_intensity
         else:
@@ -475,6 +482,8 @@ class LightChase(LightGroup):
         self.element_initialize = {}
         self._pulse = deque()
         self.last_added_index = 0
+        self.logger = logging.getLogger("%s.%s.%s" % (__name__, "LightChase", self.name))
+        
 
     def get_tween_mode_func (self,trigger_type="on"):
         if trigger_type.lower() == "on":
@@ -501,9 +510,10 @@ class LightChase(LightGroup):
                 # @@ should these next few lines be factored out into a "reset" func?
                 if self.index_tween.complete:
                     self.index_tween.complete = False
-                self.index_tween.delta = self.index = self.start
+                # self.index_tween.delta = self.index = self.start
                 self.last_update = 0
                 self._delay_till = 0
+                self.index_tween.delta = self.index = self.last_added_index = 0
         if not self.last_update:
             self.last_update = show.timecode
             # print "setting start time"
@@ -511,19 +521,22 @@ class LightChase(LightGroup):
         time_delta = show.timecode - self.last_update
         self.last_update = show.timecode
         self.tweener.update(time_delta)
-        #print "seq index %s" % self.index
+        # print "seq index %s" % self.index
         # @@ may need to use math.ciel for intindex when direction is reversed
         intindex = int(self.index)
         if not self.antialias:
             self.index = intindex
 
-        # print "seq index %s" % self.index
+        self.logger.debug("seq index %s" % self.index)
+
 
         if self.intensity:
             # this approach to pulse, will handle direction switches easily
             while intindex > self.last_added_index:
                 self.last_added_index += 1
-                index_element = self.elements[self.last_added_index]
+                self.logger.debug("self.last_added_index")
+                self.logger.debug(self.last_added_index)
+                index_element = self.elements[self.last_added_index-1]
                 # if self._pulse[-1] != index_element:
                 self._pulse.append(index_element)
                 index_element.trigger(self.intensity)
@@ -570,25 +583,29 @@ class LightChase(LightGroup):
             # @@ also need to test this against endpoint, not len, for chases that overshoot?
             # @@ all this end code should be tied to end of tween duration
             # or perhaps check if index_tween is complete
-            # print "end reached"
+            self.logger.debug("end reached")
             if self.randomize:
                 random.shuffle(self.elements)
 
             if self.animation_mode == "loop":
                 # reset index
-                # print self.loop_delay
-                # print self._delay_till
+                self.logger.debug('looping')
+                self.logger.debug(self.loop_delay)
+                self.logger.debug(self._delay_till)
                 if self.loop_delay and (self._delay_till==0):
                     self._delay_till = show.timecode + self.loop_delay
                     return
-                # print "loop reset"
+                self.logger.debug("loop reset")
                 # messing with the tween complete value is a little bit hacky - but we know we
                 # can safely do this because we know that nothing will call tweener.update outside of the
                 # chase update funciton.
                 if self.index_tween.complete:
+                    self.logger.debug('resetting tween complete to false')
                     self.index_tween.complete = False
-                self.index_tween.delta = self.index = 0
+                self.index_tween.delta = self.index = self.last_added_index = 0
                 self._delay_till = 0
+                # testing:
+                self.last_update = 0
             else:
                 self.running = self.index = self.last_update = 0
 
@@ -606,7 +623,7 @@ class LightChase(LightGroup):
     def trigger_tween_done(self,*args, **kwargs):
         # @@ will use for looping and passing etc
         # will also use for reset of various values to 0
-        # print "trigger tween done"
+        self.logger.debug("trigger tween done")
         if self.animation_mode == "loop":
             pass
             # index_tween = self.tweener.getTweensAffectingObject(self)[0]
@@ -614,11 +631,12 @@ class LightChase(LightGroup):
         # self.running = 0
         # self.last_update = 0
 
-    def trigger(self,intensity):
+    def trigger(self,intensity, **kwargs):
         # @@ need to add tween shaping here
         trigger_time = time.time()
+        self.logger.debug("len self elements: %s" % len(self.elements))
         if self.trigger_mode == "toggle":
-            print "toggle"
+            self.logger.debug("toggle")
             if not intensity:
                 # we ignore "note_off" style messages
                 return
@@ -627,15 +645,15 @@ class LightChase(LightGroup):
                 intensity = 0
 
         if intensity:
-            print "trigger on"
+            self.logger.debug("trigger on")
             if self.randomize:
                 random.shuffle(self.elements)
             self.index = self.start
             self.triggered_intensity = intensity
-            print self.element_initialize
+            # print self.element_initialize
             if not self.end:
                 self.end = float(len(self.elements))
-            print self.end
+            self.logger.debug("self.end: %s" % self.end)
             chase_width = int(self.end - self.start)
             if self.width:
                 if self.width > chase_width:
@@ -658,8 +676,9 @@ class LightChase(LightGroup):
                 if self.element_initialize:
                     e.set_special_state(self.element_initialize)
                 # e.trigger(0) @@ not sure we really want to do this esp if plan is to support overlay more
+                # e.trigger(intensity)
         else:
-            print "chase trigger: OFF"
+            self.logger.debug("chase trigger: OFF")
             self.triggered_intensity = 0
             if self.off_trigger == "all" or self.width:
                 # a pulse width implies only a "all" off mode
@@ -747,7 +766,8 @@ class LightShow(object):
             # print self.time_delta
             # @@ warning if time_delta greater than should be for frame rate
             if (self.time_delta - self.frame_delay) > .01:
-                print "slow by %s" % (self.frame_delay - self.time_delta)
+                # print "slow by %s" % (self.frame_delay - self.time_delta)
+                pass
             time.sleep(self.frame_delay)
 
     def update(self):
