@@ -1,4 +1,4 @@
-import pyportmidi as pypm
+import protomidi.portmidi as pypm
 import Queue
 import threading
 import os
@@ -11,7 +11,7 @@ class MidiReader(threading.Thread):
     # reader and dispatcher - hmmm
     working = True
 
-    def __init__(self,device, queue):
+    def __init__(self, device, queue):
         threading.Thread.__init__(self, name="midireader")
         pypm.init()
         self._input = pypm.Input(device)
@@ -28,7 +28,7 @@ class MidiReader(threading.Thread):
 
          count = 0
          while not self._stopevent.is_set():
-             if self._input.poll():
+             if self._input.recv():
                  d = self._input.read(12)
                  # print d
                  self._queue.put(d)
@@ -65,7 +65,8 @@ class MessageDispatcher(threading.Thread):
 
     def dispatch(self,message):
         """take a midi message and dispatch it to object who are interested"""
-        message_key = tuple(message[0][:2])
+        # message_key = tuple(message[0][:2])
+        message_key = (message.channel, message.note)
         if message_key in self.observers:
             for recv,type in self.observers[message_key]:
                 if type[0].lower() == 't':
@@ -73,7 +74,7 @@ class MessageDispatcher(threading.Thread):
                    vel = message[0][2]
                    recv.trigger(vel * 2)
                 elif type[0].lower() == 'm':
-                   message_data = message[0][2:]
+                   message_data = message.value
                    recv.map(message_data)
                 # @@ does reciever need original message?
                 recv.signal(message)
@@ -96,9 +97,8 @@ class MessageDispatcher(threading.Thread):
 class MidiDispatcher(threading.Thread):
     daemon = True
 
-    def __init__(self,device):
+    def __init__(self, device):
         threading.Thread.__init__(self, name="dispatcher")
-        pypm.init()
         self._input = pypm.Input(device)
         self._stopevent = threading.Event()
         self._sleepperiod = 1.0
@@ -108,8 +108,9 @@ class MidiDispatcher(threading.Thread):
         self.observers = {}
 
 
-    def add_observer(self,message_key,recv,type='trigger'):
+    def add_observer(self, message_key, recv, type='trigger'):
         # @@ could just store first letter of type and simplify the look up end
+        # TODO defaultdict
         if message_key in self.observers:
             self.observers[message_key].append((recv,type))
         else:
@@ -122,18 +123,20 @@ class MidiDispatcher(threading.Thread):
 
     def dispatch(self, message):
         """take a midi message and dispatch it to object who are interested"""
-        message_key = tuple(message[0][:2])
+        print message
+        message_key = (message.channel, message.note)
         if message_key in self.observers:
             for recv,type in self.observers[message_key]:
                 if type[0].lower() == 't':
                    # trigger type
-                   vel = data = message[0][2] * 2
+                   vel = data = message.velocity * 2
                    recv.trigger(vel, key=message_key)
                    if self.logger:
                        self.logger.log_event(recv,type,data)
                 elif type[0].lower() == 'm':
                    # map data - recv is tuple of lightobj and attr list
-                    message_data = data = message[0][2:]
+                   # TODO how does protomidi send data?
+                    message_data = data = message.value
                     lightobj,attributes = recv
                     for i, d in enumerate(message_data):
                         # print "len"
@@ -167,9 +170,9 @@ class MidiDispatcher(threading.Thread):
         count = 0
         while not self._stopevent.is_set():
             if self._input.poll():
-                d = self._input.read(12)
-                for m in d:
-                    self.dispatch(m)
+                d = self._input.recv()
+                if d:
+                    self.dispatch(d)
                     if self.file:
                         # @@ currently can not set file after dispatcher 
                         # started - would be nice to
