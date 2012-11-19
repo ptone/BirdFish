@@ -16,6 +16,66 @@ def sh(cmd):
 
 class SceneSetter(object):
 
+    def set_element_attr(self, target, mapping, value):
+        if hasattr(target, "elements"):
+            # is a group
+            for e in self.target.elements:
+                if hasattr(e, "elements"):
+                    # recurse
+                    self.set_element_attr(e, mapping, value)
+                else:
+                    try:
+                        setattr(e,mapping,value)
+                    except AttributeError:
+                        print "error setting %s" % mapping
+        else:
+            try:
+                setattr(target, mapping, value)
+            # self.target.update_rgb()
+            except AttributeError:
+                print "error setting %s" % mapping
+
+    def set_target_attr(self, mapping, value):
+        print "setting %s on %s to %s" % (mapping, self.target.name, value)
+        self.set_element_attr(self.target, mapping, value)
+# TODO clean up below cruft
+        # if hasattr(self.target, "elements"):
+            # # is a group
+            # for e in self.target.elements:
+                # try:
+                    # setattr(e,mapping,value)
+                # except AttributeError:
+                    # print "error setting %s" % mapping
+        # else:
+            # try:
+                # setattr(self.target, mapping, value)
+            # # self.target.update_rgb()
+            # except AttributeError:
+                # print "error setting %s" % mapping
+        # print self.target.red, self.target.green, self.target.blue
+        return
+
+    def set_intensity(self, value):
+        # print "intensity"
+        self.set_target_attr('intensity', value)
+
+    def set_hue(self, value):
+        self.set_target_attr('hue', value)
+        # print self.target.hue
+        # print self.target.red, self.target.green, self.target.blue
+
+    def set_saturation(self, value):
+        self.set_target_attr('saturation', value)
+
+    def get_val(self):
+# TODO - create getters for mappings
+        return 0
+
+    intensity = property(get_val, set_intensity)
+    hue = property(get_val, set_hue)
+    saturation = property(get_val, set_saturation)
+
+
     def __init__(self, *args, **kwargs):
         super(SceneSetter, self).__init__(*args, **kwargs)
 
@@ -37,37 +97,40 @@ class SceneSetter(object):
             time.sleep(.1)
         self.target.intensity = current_intensity
 
-
-    def signal(self,message):
+    def trigger(self, intensity, **kwargs):
+        # print args
+        # print kwargs
+        # return
         # [[144, 42, 127, 0], 6463]
-        message_key = tuple(message[0][:2])
-        message_data = message[0][2:]
-        if message_key in self.target_map and not message_data[0]:
+        message_key = kwargs.get('key')
+        if message_key in self.target_map and not intensity:
             element = self.target_map[message_key]
             print "setting target: %s" % element.name
             # @@ temp hack - need to make mac os conditional
             sh('say %s' % element.name)
+            # TODO remove previous target from dispatcher?
             self.target = element
             self.highlight_target()
+            # TODO add element to dispatcher for mapping
             return
         if message_key == self.highlight_signal:
             self.highlight_target()
             return
-        if message_key in self.mappings:
-            if self.target:
-                mapping = self.mappings[message_key]
-                # if hasattr(self.target, mapping):
-                value = (message_data[0]/127.0) * 255
-                print "setting %s on %s to %s" % (mapping, self.target.name, value)
-                if hasattr(self.target, "elements"):
-                    # is a group
-                    for e in self.target.elements:
-                        setattr(e,mapping,value)
-                else:
-                    setattr(self.target, mapping, value)
-                # print self.target.red, self.target.green, self.target.blue
-                return
-        if message_key == self.print_scene_signal and not message_data[0]:
+        # if message_key in self.mappings:
+            # if self.target:
+                # mapping = self.mappings[message_key]
+                # # if hasattr(self.target, mapping):
+                # value = (message_data[0]/127.0) * 255
+                # print "setting %s on %s to %s" % (mapping, self.target.name, value)
+                # if hasattr(self.target, "elements"):
+                    # # is a group
+                    # for e in self.target.elements:
+                        # setattr(e,mapping,value)
+                # else:
+                    # setattr(self.target, mapping, value)
+                # # print self.target.red, self.target.green, self.target.blue
+                # return
+        if message_key == self.print_scene_signal and not intensity:
             self.print_scene()
 
     def get_scene(self):
@@ -157,10 +220,12 @@ class SceneManager(object):
         # @@ what should we do if we are already running a switch?
         print scene.name
         for element in scene.elements:
-            # print
-            # print element.light.name
-            # print "values:"
-            # print element.values
+            # @@ TODO - remove this debug code:
+            if element.light.name == "floorscr1":
+                pass
+                # print
+                # print "%s scene values:" % element.light.name
+                # print element.values
             # could gang all properties for light into a single tween... @@
             tween = getattr(self.tweener,element.tween.upper())
             changes = {}
@@ -168,19 +233,34 @@ class SceneManager(object):
                 if not hasattr(element.light,k): continue
                 current_value = getattr(element.light, k)
                 if v == current_value:
-                    # print "skipping %s alread %s" % (k,v)
+                    if element.light.name == "floorscr1":
+                        pass
+                        # print "skipping %s.%s already %s" % (element.light.name, k,v)
                     continue # no need to tween
+                else:
+                    if element.light.name == "floorscr1":
+                        pass
+                        # print "current value of %s.%s : %s" % (element.light.name,
+                                # k, current_value)
                 changes[k] = v - current_value
-            # print "changes:"
-            # print changes
+            if element.light.name == "floorscr1":
+                pass
+                # print "changes:"
+                # print changes
             if changes:
-                # print "currently have %s tweens" % len(self.tweener.currentTweens)
-                self.tweener.addTween(  element.light,
+
+                new_tween = self.tweener.addTween(
+                                        element.light,
                                         tweenTime=element.duration,
                                         tweenDelay=element.delay,
                                         tweenType=tween,
                                         onCompleteFunction=tween_done_logger,
                                         **changes)
+                if element.light.name == "floorscr1":
+                    pass
+                    # print "currently have %s tweens" % len(self.tweener.currentTweens)
+                    # print "tweenables:"
+                    # print new_tween.tweenables
                 self.switching = True
 
     def set_cue(self, message_key, scene):
@@ -191,6 +271,7 @@ class SceneManager(object):
             self.last_update = 0
             return False
         if not self.tweener.hasTweens():
+            print "scene tweens done"
             self.switching = False
             return False
         if not self.last_update:
