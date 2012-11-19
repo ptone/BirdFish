@@ -1,14 +1,14 @@
 from setuptools import setup, find_packages
  
-pkg_name = "birdfish"
+pkg_name = "Birdfish"
 setup(
     name = pkg_name,
-    version = __import__(pkg_name).__version__,
+    version = __import__(pkg_name.lower()).__version__,
     description='Object oriented lighting control software',
     #long_description=open('docs/usage.txt').read(),
     author='Preston Holmes',
     author_email='preston@ptone.com',
-    url='http://www.ptone.com',
+    url='https://github.com/ptone/birdfish',
     packages=find_packages(),
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
