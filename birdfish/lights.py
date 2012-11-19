@@ -252,10 +252,10 @@ class RGBLight(LightElement):
         self.channels[start_channel+2] = 'blue'
         # set up rgb values
 
-    # def trigger(self, intensity, **kwargs):
-        # self.intensity = intensity
-        # self.update_rgb()
-        # super(RGBLight, self).trigger(intensity, **kwargs)
+    def trigger(self, intensity, **kwargs):
+        self.intensity = intensity
+        self.update_rgb()
+        super(RGBLight, self).trigger(intensity, **kwargs)
 
     def update(self, show):
         return_value =  super(RGBLight, self).update(show)
@@ -277,16 +277,18 @@ class RGBLight(LightElement):
         # self.intensity = v * 255
 
     def update_rgb(self):
-        hue = self._hue/255
+        hue = self._hue/255.0
         saturation = self._saturation/255.0
         if 'intensity' in self.channels.values():
             # if the fixture has its own intensity slider - always calc RGB values at full intensity
-            intensity = 1
+            intensity = 1.0
         else:
             intensity = self.intensity/255.0
         # this funct takes all 0-1 values
-        r,g,b = colorsys.hsv_to_rgb(hue,saturation, intensity)
+        # print "intensity %s " % intensity
+        r,g,b = colorsys.hsv_to_rgb(hue, saturation, intensity)
         # here intensity is assumed to be full, as HSV to RGB sets RGB values accordingly
+        # print "result %s, %s, %s" % (r,g,b)
         self.red = r * 255.0
         self.green = g * 255.0
         self.blue = b * 255.0
@@ -610,7 +612,7 @@ class LightChase(LightGroup):
                 self.running = self.index = self.last_update = 0
 
     def kill(self):
-        self.running = self.index = self.last_update = 0
+        self.running = self.index = self.last_update = self.last_added_index = 0
         self.triggered_intensity = 0
         for e in self.elements:
             e.trigger(0)
