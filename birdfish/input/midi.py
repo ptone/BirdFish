@@ -115,7 +115,12 @@ class MidiDispatcher(threading.Thread):
         else:
             self.observers[message_key] = [(recv,type)]
 
-    def dispatch(self,message):
+    def remove_observer(self, element):
+        for message in self.observers:
+            self.observers[message] = \
+            [x for x in self.observers[message] if x[0] != element]
+
+    def dispatch(self, message):
         """take a midi message and dispatch it to object who are interested"""
         message_key = tuple(message[0][:2])
         if message_key in self.observers:
