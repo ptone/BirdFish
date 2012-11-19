@@ -1,5 +1,6 @@
 import socket
 import select
+import time
 from ola.OlaClient import OlaClient, Universe
 from birdfish.output.base import BaseNetwork
 # from birdfish.output.client_wrapper import ClientWrapper
