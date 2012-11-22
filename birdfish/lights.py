@@ -26,7 +26,7 @@ class BaseLightElement(object):
     if when the value of a channel attribute is changed, set a flag containing
     show timecode.  When a subsequent meta element goes to change a value, it
     checks this flag, and if set to current show timecode, will only change the
-    value based on some rule - say only brighten or increase the value.  This 
+    value based on some rule - say only brighten or increase the value.  This
     would support some things like having different chases pass by each other.
     """
 
@@ -36,12 +36,12 @@ class BaseLightElement(object):
         # signal intensity is the value set by the note on velocity - does not reflect current brightness
         self.trigger_intensity = 0
         self.intensity = 0
-        self.channels = {} 
+        self.channels = {}
         self.last_updated = 0
         self.channels[start_channel] = 'intensity'
         self.frame_rate = 40
 
-    def update_data(self,data):
+    def update_data(self, data):
         """data is an array of data (ie DMX) that should be updated with this light's channels"""
         for channel, value in self.channels.items():
 
@@ -162,7 +162,7 @@ class LightElement(BaseLightElement):
         elif self.env_phase == 4:
             # release is all done - shut off
             self.intensity = self.env_phase = self.trigger_intensity = 0
-    
+
     def do_release(self):
         logger.debug("release")
         if self.release:
@@ -185,13 +185,15 @@ class LightElement(BaseLightElement):
         if phase == 'attack':
             intensity_delta = self.trigger_intensity
         elif phase == 'decay':
-            intensity_delta = (self.trigger_intensity * self.sustain)- self.intensity 
+            intensity_delta = (self.trigger_intensity * self.sustain)- self.intensity
         elif phase == 'release':
             intensity_delta = -self.intensity
-        self.shape_tween = self.tweener.addTween(self,tweenTime = getattr(self,phase), 
+        self.shape_tween = self.tweener.addTween(
+                self, # the object being tweened
+                tweenTime = getattr(self,phase),
                 tweenType = getattr(self.tweener, getattr(self,"%s_tween" % phase).upper()),
                 onCompleteFunction = self.tween_done,
-                intensity = intensity_delta,
+                intensity = intensity_delta, # the attribute being tweened
                 )
         self.last_update = 0
 
@@ -259,7 +261,7 @@ class RGBLight(LightElement):
 
     def update(self, show):
         return_value =  super(RGBLight, self).update(show)
-        # TODO - this funciton needed when tweening hue - but can't be used 
+        # TODO - this funciton needed when tweening hue - but can't be used
         # tweening RGB directly
         # self.update_rgb()
         return return_value
@@ -328,7 +330,7 @@ class LightGroup(BaseLightElement):
         self.intensity_overide = 0
         self.element_initialize = {}
         self.logger = logging.getLogger("%s.%s.%s" % (__name__, "LightGroup", self.name))
-        
+
     # @@ problematic - problems with __init__ in base classes:
     # def __setattr__(self,key,val):
     #     local_keys = ['name','intensity_overide','element_initialize','elements']
@@ -435,20 +437,20 @@ class LightChase(LightGroup):
 
     todo:
     Will need a better way of tracking an index chase that can switch direction.
-    the width trail would best be handled by keeping a list of on_elements and 
+    the width trail would best be handled by keeping a list of on_elements and
     pushing and popping from that to keep the disired length.
 
     Need to define a way of a start frame and end frame in addtion to start and
-    end that is, the tween values calculated for start and end, but only 
-    displayed through the frame.  Ultimately means solving a time t for x, so 
+    end that is, the tween values calculated for start and end, but only
+    displayed through the frame.  Ultimately means solving a time t for x, so
     that a time offset can be applied to the timedelta passed to the first
-    tween update.  This calc could be done at trigger time or init and would 
+    tween update.  This calc could be done at trigger time or init and would
     most practically be done by calling the tween math function in a tight loop
     This only is needed for non-linear tweens, so may not be pressing feature.
 
     start and end index - defaults to first and last element - but for some tweens, need "margins"
 
-    if duration of elements is short such that all lights are off at end of chase, and off trigger received 
+    if duration of elements is short such that all lights are off at end of chase, and off trigger received
         lights will be sent 0 trigger in chase/reverse even though they are out
 
     Inverse Mode: move a light off - whole chase on, the dark part is what animate (inverse)
@@ -485,7 +487,7 @@ class LightChase(LightGroup):
         self._pulse = deque()
         self.last_added_index = 0
         self.logger = logging.getLogger("%s.%s.%s" % (__name__, "LightChase", self.name))
-        
+
 
     def get_tween_mode_func (self,trigger_type="on"):
         if trigger_type.lower() == "on":
@@ -570,7 +572,7 @@ class LightChase(LightGroup):
         #            print "have duration"
         #            if self.antialias or self.width > 1:
         #                # @@ handle width stuff here
-        #                
+        #
         #                # i, v = divmod (self.index-1, 1)
         #                # self.elements[int(i)].trigger(int(v*255))
         #                if self.index%1 > .5:
@@ -665,10 +667,10 @@ class LightChase(LightGroup):
                 # 0 width implies entire chase range = width
                 self._width = chase_width
 
-            tw = self.tweener.addTween(self, 
+            tw = self.tweener.addTween(self,
                                     index=self.end,
-                                    tweenTime=float(self.speed_control * self.max_speed), 
-                                    tweenType=self.get_tween_mode_func(), 
+                                    tweenTime=float(self.speed_control * self.max_speed),
+                                    tweenType=self.get_tween_mode_func(),
                                     onCompleteFunction=self.trigger_tween_done,
                                     )
             self.index_tween = tw
