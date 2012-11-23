@@ -1,16 +1,12 @@
-import array
 from collections import deque
 import colorsys
 # from ola.OlaClient import OlaClient, Universe
 # import client_wrapper
-import copy
 import time
-import socket
 # import select
 import random
 import logging
 import pytweener
-import math
 from scene import SceneManager
 from birdfish.output.base import DefaultNetwork
 
@@ -18,6 +14,7 @@ from birdfish.output.base import DefaultNetwork
 logger = logging.getLogger(__name__)
 
 frame_rate = 30
+
 
 class BaseLightElement(object):
     """docstring for BaseLightElement"""
@@ -30,10 +27,11 @@ class BaseLightElement(object):
     would support some things like having different chases pass by each other.
     """
 
-    def __init__(self, start_channel=1,*args, **kwargs):
-        self.name = kwargs.get('name',"baselight")
+    def __init__(self, start_channel=1, *args, **kwargs):
+        self.name = kwargs.get('name', "baselight")
         self.effects = []
-        # signal intensity is the value set by the note on velocity - does not reflect current brightness
+        # signal intensity is the value set by the note on velocity -
+        # does not reflect current brightness
         self.trigger_intensity = 0
         self.intensity = 0
         self.channels = {}
@@ -42,17 +40,21 @@ class BaseLightElement(object):
         self.frame_rate = 40
 
     def update_data(self, data):
-        """data is an array of data (ie DMX) that should be updated with this light's channels"""
+        """
+        data is an array of data (ie DMX) that should be updated
+        with this light's channels
+        """
         for channel, value in self.channels.items():
 
             # if channel == 2:
-                           # print '%s, %s, %s' % (channel, value, int(getattr(self,value)))
-            val = int(getattr(self,value))
-            data[channel-1] = int(val)
-            # no easy way to have more than one light on the same channel
-            # would need some way to track which objs have updated a slot - so that each has a shot
-            # at increasing it.  @@ need a way to check for channel collisions to avoide unexpected results
-            # dmx[channel-1] = max (dmx_val,dmx[channel-1]) #zero index adjust??
+            # print '%s, %s, %s' % (channel, value, int(getattr(self,value)))
+            val = int(getattr(self, value))
+            data[channel - 1] = int(val)
+            # no easy way to have more than one light on the same channel would
+            # need some way to track which objs have updated a slot - so that
+            # each has a shot at increasing it.  @@ need a way to check for
+            # channel collisions to avoide unexpected results dmx[channel-1]
+            # = max (dmx_val,dmx[channel-1]) #zero index adjust??
 
 class LightElement(BaseLightElement):
 
@@ -74,10 +76,11 @@ class LightElement(BaseLightElement):
         self.bell_mode = False
         self.last_update = 0
         self.shape_tween = False
-        self.name = kwargs.get("name","unnamed_LightElement")
-        self.logger = logging.getLogger("%s.%s.%s" % (__name__, "LightElement", self.name))
+        self.name = kwargs.get("name", "unnamed_LightElement")
+        self.logger = logging.getLogger(
+                "%s.%s.%s" % (__name__, "LightElement", self.name))
 
-    def set_special_state(self,state_dict):
+    def set_special_state(self, state_dict):
         defaults = self.__dict__.copy()
         if 'defaults' in defaults:
             del(defaults['defaults'])
@@ -85,11 +88,11 @@ class LightElement(BaseLightElement):
         self.__dict__.update(state_dict)
 
     def restore_defaults(self):
-        if hasattr(self,"defaults"):
+        if hasattr(self, "defaults"):
             self.__dict__.update(self.defaults)
 
     def update(self, show):
-        if hasattr(self,'debug'):
+        if hasattr(self, 'debug'):
             if self.intensity and self.env_phase == 4:
                 self.logger.debug("intensity: %s" % self.intensity)
             # if self.env_phase:
@@ -121,7 +124,7 @@ class LightElement(BaseLightElement):
         return self.intensity
 
     def adsr_advance(self):
-        if hasattr(self.shape_tween,'complete'):
+        if hasattr(self.shape_tween, 'complete'):
             # clear out previous tween
             self.shape_tween.complete = True
         if self.env_phase == 1:
@@ -178,35 +181,35 @@ class LightElement(BaseLightElement):
         # this update will clear out completed tweens to hasTweens will return correct value
         self.tweener.update(0)
 
-    def add_shape_tween(self,phase):
-        if hasattr(self.shape_tween,'complete'):
+    def add_shape_tween(self, phase):
+        if hasattr(self.shape_tween, 'complete'):
             # clear out previous tween
             self.shape_tween.complete = True
         if phase == 'attack':
             intensity_delta = self.trigger_intensity
         elif phase == 'decay':
-            intensity_delta = (self.trigger_intensity * self.sustain)- self.intensity
+            intensity_delta = (self.trigger_intensity * self.sustain) - self.intensity
         elif phase == 'release':
             intensity_delta = -self.intensity
         self.shape_tween = self.tweener.addTween(
                 self, # the object being tweened
-                tweenTime = getattr(self,phase),
-                tweenType = getattr(self.tweener, getattr(self,"%s_tween" % phase).upper()),
+                tweenTime=getattr(self, phase),
+                tweenType=getattr(self.tweener, getattr(self, "%s_tween" % phase).upper()),
                 onCompleteFunction = self.tween_done,
-                intensity = intensity_delta, # the attribute being tweened
-                )
+                intensity=intensity_delta,  # the attribute being tweened
+                                                )
         self.last_update = 0
 
     def trigger(self, intensity, **kwargs):
         """Trigger a light with code instead of midi"""
         # @@ need toggle mode implementation here
-        if intensity > 0: # or note off message
+        if intensity > 0:  # or note off message
             if self.tweener.hasTweens() and self.bell_mode:
                 self.logger.debug("ignoring on trigger")
                 return
             self.trigger_intensity = intensity
             self.logger.debug("trigger on")
-            self.intensity = 0 # reset light on trigger
+            self.intensity = 0  # reset light on trigger
             self.env_phase = 1
             if self.attack:
                 self.logger.debug("has attack - adding tween")
@@ -222,7 +225,7 @@ class LightElement(BaseLightElement):
                 self.logger.debug("trigger off - release")
                 self.do_release()
             else:
-                if hasattr(self.shape_tween,'complete'):
+                if hasattr(self.shape_tween, 'complete'):
                     # clear out previous tween
                     self.logger.debug("cancelling tween")
                     self.shape_tween.complete = True
@@ -236,9 +239,9 @@ class LightElement(BaseLightElement):
 
 
 class RGBLight(LightElement):
-    RED = (255,0,0)
-    GREEEN = (0,255,0)
-    BLUE = (0,0,255)
+    RED = (255, 0, 0)
+    GREEEN = (0, 255, 0)
+    BLUE = (0, 0, 255)
 
     def __init__(self, *args, **kwargs):
         super(RGBLight, self).__init__(*args, **kwargs)
@@ -250,8 +253,8 @@ class RGBLight(LightElement):
         self._hue = 0.0
         self._saturation = 0
         self.channels[start_channel] = 'red'
-        self.channels[start_channel+1] = 'green'
-        self.channels[start_channel+2] = 'blue'
+        self.channels[start_channel + 1] = 'green'
+        self.channels[start_channel + 2] = 'blue'
         # set up rgb values
 
     def trigger(self, intensity, **kwargs):
@@ -260,7 +263,7 @@ class RGBLight(LightElement):
         super(RGBLight, self).trigger(intensity, **kwargs)
 
     def update(self, show):
-        return_value =  super(RGBLight, self).update(show)
+        return_value = super(RGBLight, self).update(show)
         # TODO - this funciton needed when tweening hue - but can't be used
         # tweening RGB directly
         # self.update_rgb()
@@ -269,9 +272,9 @@ class RGBLight(LightElement):
     # @@ need to address the attribute of intensity in the context of RGB
     def update_hue(self):
         """updates hue property from RGB values, RGB is always updated when hue changed"""
-        adjusted_rgb = [(x/255.0)*(self.intensity/255.0) for x in [
+        adjusted_rgb = [(x / 255.0) * (self.intensity / 255.0) for x in [
             self.red, self.green, self.blue]]
-        h,s,v = colorsys.rgb_to_hsv(*tuple(adjusted_rgb))
+        h, s, v = colorsys.rgb_to_hsv(*tuple(adjusted_rgb))
         # hue and saturation stay as 0-1 values, not 0-255 since they are assumed to be not DMX
         self._hue = h * 255
         self._saturation = s * 255
@@ -279,16 +282,16 @@ class RGBLight(LightElement):
         # self.intensity = v * 255
 
     def update_rgb(self):
-        hue = self._hue/255.0
-        saturation = self._saturation/255.0
+        hue = self._hue / 255.0
+        saturation = self._saturation / 255.0
         if 'intensity' in self.channels.values():
             # if the fixture has its own intensity slider - always calc RGB values at full intensity
             intensity = 1.0
         else:
-            intensity = self.intensity/255.0
+            intensity = self.intensity / 255.0
         # this funct takes all 0-1 values
         # print "intensity %s " % intensity
-        r,g,b = colorsys.hsv_to_rgb(hue, saturation, intensity)
+        r, g, b = colorsys.hsv_to_rgb(hue, saturation, intensity)
         # here intensity is assumed to be full, as HSV to RGB sets RGB values accordingly
         # print "result %s, %s, %s" % (r,g,b)
         self.red = r * 255.0
@@ -300,30 +303,30 @@ class RGBLight(LightElement):
         # @@ need to update with function in case r,g,b were updated other than through hue
         return self._hue
 
-    def _set_hue(self,hue):
+    def _set_hue(self, hue):
         self._hue = hue
         self.update_rgb()
 
     def _get_saturation(self):
         return self._saturation
 
-    def _set_saturation(self,saturation):
+    def _set_saturation(self, saturation):
         self._saturation = saturation
         self.update_rgb()
         # @@ concept of intensity should be converted to raw RGB for base RGB light
         # no assumption of 4th channel
 
-    hue = property(_get_hue,_set_hue)
-    saturation = property(_get_saturation,_set_saturation)
+    hue = property(_get_hue, _set_hue)
+    saturation = property(_get_saturation, _set_saturation)
 
 class LightGroup(BaseLightElement):
     """A collection of light Elements triggered in collectively in some form"""
     def __init__(self, *args, **kwargs):
         super(LightGroup, self).__init__(*args, **kwargs)
         self.elements = []
-        self.name = kwargs.get("name","lightgroup")
-        self.trigger_mode = kwargs.get("trigger_mode","sustain")
-        e = kwargs.get("elements",[])
+        self.name = kwargs.get("name", "lightgroup")
+        self.trigger_mode = kwargs.get("trigger_mode", "sustain")
+        e = kwargs.get("elements", [])
         if e:
             # make a copy of the values
             self.elements = list(e)
@@ -352,7 +355,7 @@ class LightGroup(BaseLightElement):
         if (not sig_intensity) and self.element_initialize:
             self.restore_defaults()
 
-    def set_special_state(self,state_dict):
+    def set_special_state(self, state_dict):
         for l in self.elements:
             l.set_special_state(state_dict)
 
@@ -489,7 +492,7 @@ class LightChase(LightGroup):
         self.logger = logging.getLogger("%s.%s.%s" % (__name__, "LightChase", self.name))
 
 
-    def get_tween_mode_func (self,trigger_type="on"):
+    def get_tween_mode_func(self, trigger_type="on"):
         if trigger_type.lower() == "on":
             return getattr(self.tweener, self.tween_on.upper())
         else:
@@ -504,7 +507,7 @@ class LightChase(LightGroup):
         """reset various values to beginning of chase"""
         pass
 
-    def update(self,show):
+    def update(self, show):
         if not self.running: return False
         if self._delay_till:
             if show.timecode < self._delay_till:
@@ -540,7 +543,7 @@ class LightChase(LightGroup):
                 self.last_added_index += 1
                 self.logger.debug("self.last_added_index")
                 self.logger.debug(self.last_added_index)
-                index_element = self.elements[self.last_added_index-1]
+                index_element = self.elements[self.last_added_index - 1]
                 # if self._pulse[-1] != index_element:
                 self._pulse.append(index_element)
                 index_element.trigger(self.intensity)
@@ -548,9 +551,9 @@ class LightChase(LightGroup):
                 trail_element = self._pulse.popleft()
                 trail_element.trigger(0)
 
-            if self.antialias and (intindex < self.end) and self.index%1:
+            if self.antialias and (intindex < self.end) and self.index % 1:
                 e = self.elements[intindex + 1]
-                partial = int((self.index%1 * 255) * (255/self.intensity))
+                partial = int((self.index % 1 * 255) * (255 / self.intensity))
                 e.trigger(partial)
                 # @@ antialias in reverse will be tricky
                 # need a direction attribute
@@ -596,7 +599,7 @@ class LightChase(LightGroup):
                 self.logger.debug('looping')
                 self.logger.debug(self.loop_delay)
                 self.logger.debug(self._delay_till)
-                if self.loop_delay and (self._delay_till==0):
+                if self.loop_delay and (self._delay_till == 0):
                     self._delay_till = show.timecode + self.loop_delay
                     return
                 self.logger.debug("loop reset")
@@ -624,7 +627,7 @@ class LightChase(LightGroup):
 
         self.tweener.removeTweeningFrom(self)
 
-    def trigger_tween_done(self,*args, **kwargs):
+    def trigger_tween_done(self, *args, **kwargs):
         # @@ will use for looping and passing etc
         # will also use for reset of various values to 0
         self.logger.debug("trigger tween done")
@@ -635,7 +638,7 @@ class LightChase(LightGroup):
         # self.running = 0
         # self.last_update = 0
 
-    def trigger(self,intensity, **kwargs):
+    def trigger(self, intensity, **kwargs):
         # @@ need to add tween shaping here
         trigger_time = time.time()
         self.logger.debug("len self elements: %s" % len(self.elements))
@@ -711,8 +714,8 @@ class LightShow(object):
 
     def send_viewer_data(self):
         dd = ''.join([chr(int(i)) for i in self.networks[1].data])
-        f = open('/tmp/dmxpipe','wb',0)
-        pad_dd = dd.ljust(512,'\x00')
+        f = open('/tmp/dmxpipe', 'wb', 0)
+        pad_dd = dd.ljust(512, '\x00')
         f.write(pad_dd)
         f.close()
 
@@ -723,14 +726,14 @@ class LightShow(object):
         self.frame_rate = 40
         self.dmx_keep_alive = True
         self.scenemanager = SceneManager()
-        self.frame_delay = 1.0/self.frame_rate
+        self.frame_delay = 1.0 / self.frame_rate
         self.running = True
         self.preview_enabled = False
         self.named_elements = {}
         self.default_network = DefaultNetwork()
         self.networks.append(self.default_network)
 
-    def add_element(self,element,network=None):
+    def add_element(self, element, network=None):
         if network:
             network.add_element(element)
             if network not in self.networks:
@@ -742,10 +745,10 @@ class LightShow(object):
         for n in self.networks:
             for e in n.elements:
                 e.trigger(0)
-                if hasattr(d,'intensity'):
+                if hasattr(e, 'intensity'):
                     e.intensity = 0
 
-    def get_named_element(self,name):
+    def get_named_element(self, name):
         if name in self.named_elements:
             # a simple cache
             return self.named_elements[name]
@@ -759,7 +762,7 @@ class LightShow(object):
     def init_show(self):
         for n in self.networks:
             n.init_data()
-        self.frame_delay = 1.0/self.frame_rate
+        self.frame_delay = 1.0 / self.frame_rate
 
     def run_live(self):
         self.init_show()
