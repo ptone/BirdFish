@@ -153,3 +153,41 @@ def IN_OUT_BACK(t, b, c, d):
         s*=(1.525)
         return c/2*((t)*t*(((s)+1)*t + s) + 2) + b
 
+"""
+
+Pseudocode from wikipedia
+
+INPUT: Function f, endpoint values a, b, tolerance TOL, maximum iterations NMAX
+CONDITIONS: a < b, either f(a) < 0 and f(b) > 0 or f(a) > 0 and f(b) < 0
+OUTPUT: value which differs from a root of f(x)=0 by less than TOL
+
+N ← 1
+While N ≤ NMAX { limit iterations to prevent infinite loop
+  c ← (a + b)/2 new midpoint
+  If (f(c) = 0 or (b – a)/2 < TOL then { solution found
+    Output(c)
+    Stop
+  }
+  N ← N + 1 increment step counter
+  If sign(f(c)) = sign(f(a)) then a ← c else b ← c new interval
+}
+Output("Method failed.") max number of steps exceeded
+"""
+
+def jump_time(tween, value, b, c, d):
+    """
+    return t for given value using bisect
+    does not work for whacky curves yes
+
+    """
+    max_iter = 20
+    resolution = 0.01
+    iter = 1
+    lower = 0
+    upper = d
+    while iter < max_iter:
+        t = (upper - lower) / 2
+        if tween(t, b, c, d) - value < resolution:
+            return t
+        else:
+            upper = t
