@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Tween functions
 t = current time
@@ -174,10 +175,11 @@ While N ≤ NMAX { limit iterations to prevent infinite loop
 Output("Method failed.") max number of steps exceeded
 """
 
-def jump_time(tween, value, b, c, d):
+def bisect_jump_time(tween, value, b, c, d):
     """
+    **** Not working yet
     return t for given value using bisect
-    does not work for whacky curves yes
+    does not work for whacky curves
 
     """
     max_iter = 20
@@ -191,3 +193,19 @@ def jump_time(tween, value, b, c, d):
             return t
         else:
             upper = t
+
+def jump_time(tween, value, b, c, d):
+    resolution = .01
+    time_slice = d * resolution
+    current_time = 0
+    accuracy = abs((b - c)/200.0)
+    val_min = value - accuracy
+    val_max = value + accuracy
+    for i in range(100):
+        temp_value = tween(current_time, b, c, d)
+        if val_max >= temp_value >= val_min:
+            print temp_value
+            return current_time
+        current_time += time_slice
+    raise ValueError('Unable to determine jump time')
+
