@@ -1,12 +1,17 @@
+import sys
 from collections import deque
 import colorsys
+import threading
 # from ola.OlaClient import OlaClient, Universe
 # import client_wrapper
 import time
 # import select
+import math
 import random
 import logging
 import pytweener
+import tween
+from envelope import ADSREnvelope
 from scene import SceneManager
 from birdfish.output.base import DefaultNetwork
 
@@ -37,6 +42,7 @@ class BaseLightElement(object):
         self.channels = {}
         self.last_updated = 0
         self.channels[start_channel] = 'intensity'
+        # TODO should an element have it's own framerate??
         self.frame_rate = 40
 
     def update_data(self, data):
@@ -49,73 +55,60 @@ class BaseLightElement(object):
             # if channel == 2:
             # print '%s, %s, %s' % (channel, value, int(getattr(self,value)))
             val = int(getattr(self, value))
-            data[channel - 1] = int(val)
+            data[channel - 1] = max(data[channel - 1], int(val))
+
             # no easy way to have more than one light on the same channel would
             # need some way to track which objs have updated a slot - so that
             # each has a shot at increasing it.  @@ need a way to check for
             # channel collisions to avoide unexpected results dmx[channel-1]
             # = max (dmx_val,dmx[channel-1]) #zero index adjust??
+            # currently this brightest wins is done by zero out the data
 
 class LightElement(BaseLightElement):
 
 
     def __init__(self, *args, **kwargs):
         super(LightElement, self).__init__(*args, **kwargs)
-        self.env_phase = 0 # adsr 1234
-        self.attack = 0
-        self.decay = 0
-        self.sustain = 1 # should be a value between 0 and 1
-        self.release = 0
         self.trigger_intensity = 0
-        self.attack_tween = "linear"
-        self.decay_tween = "linear"
-        self.release_tween = "linear"
-        self.env_step = 1
         self.universe = 1
-        self.tweener = pytweener.Tweener()
         self.bell_mode = False
         self.last_update = 0
-        self.shape_tween = False
         self.name = kwargs.get("name", "unnamed_LightElement")
+        self.adsr_envelope = ADSREnvelope(**kwargs)
+        # a simple element has values set externally and does not update
+        self.simple = False
+
         self.logger = logging.getLogger(
                 "%s.%s.%s" % (__name__, "LightElement", self.name))
 
-    def set_special_state(self, state_dict):
-        defaults = self.__dict__.copy()
-        if 'defaults' in defaults:
-            del(defaults['defaults'])
-        self.defaults = defaults
-        self.__dict__.update(state_dict)
-
-    def restore_defaults(self):
-        if hasattr(self, "defaults"):
-            self.__dict__.update(self.defaults)
-
     def update(self, show):
-        if hasattr(self, 'debug'):
-            if self.intensity and self.env_phase == 4:
-                self.logger.debug("intensity: %s" % self.intensity)
+        # print threading.active_count()
+        # if hasattr(self, 'debug'):
+            # if self.intensity and self.env_phase == 4:
+                # self.logger.debug("intensity: %s" % self.intensity)
             # if self.env_phase:
                 # print self.env_phase
-        if (not (self.intensity or self.trigger_intensity)) or self.env_phase == 3:
+        if (self.simple or not (self.intensity or self.trigger_intensity)):
             # light is inactive or in sustain mode
-            return False
+            return self.intensity
         if not self.last_update:
             # can't set this from trigger - since don't have access to show
             self.last_update = show.timecode
-            return False
+            return self.intensity
         time_delta = show.timecode - self.last_update
         self.last_update = show.timecode
-        # self.last_used_intensity = self.intensity
-        if self.tweener.hasTweens():
-            self.tweener.update(time_delta)
-            # if the only tween that existed was already complete
-            # tweener.update will clear it out, then a check will show no
-            # active tweens
-            if not self.tweener.hasTweens():
-                self.adsr_advance()
+        if self.adsr_envelope.advancing:
+            intensity_scale = self.adsr_envelope.update(time_delta)
+            self.intensity = self.trigger_intensity * intensity_scale
         else:
-            self.adsr_advance()
+            print self.name
+            print 'not advancing, intensity: {}'.format(self.intensity)
+            self.trigger_intensity = 0
+            if self.intensity < 0:
+                self.intensity = 0
+            print 'not advancing, intensity: {}'.format(self.intensity)
+            print 'not advancing, trigger intensity: {}'.format(self.trigger_intensity)
+            self.last_update = 0
 
         # moved dmx update to show update, to accomodate effects
         # self.dmx_update(show.universes[self.universe].dmx)
@@ -123,114 +116,30 @@ class LightElement(BaseLightElement):
         #     print int(self.intensity)
         return self.intensity
 
-    def adsr_advance(self):
-        if hasattr(self.shape_tween, 'complete'):
-            # clear out previous tween
-            self.shape_tween.complete = True
-        if self.env_phase == 1:
-            if self.decay:
-                self.env_phase = 2
-                self.add_shape_tween('decay')
-            else:
-                # no decay, enter sustain
-                self.env_phase = 3
-        elif self.env_phase == 2:
-            if not self.sustain:
-                # decayed to off, shut element down
-                self.intensity = self.env_phase = self.trigger_intensity = 0
-            else:
-                # decay is complete, enter sustain
-                if self.bell_mode:
-                    # no sustain in bell mode
-                    if self.release:
-                        self.do_release()
-                    else:
-                        # end
-                        # @@ perhaps catch and warn confusing condition if bell
-                        # mode chosen but no attack, decay, or release
-                        self.intensity = self.env_phase = self.trigger_intensity = 0
-                else:
-                    self.env_phase = 3
-        elif self.env_phase == 3:
-            if self.bell_mode:
-                # jump to release
-                if self.release:
-                    self.do_release()
-                else:
-                    # turn off now
-                    self.intensity = self.env_phase = self.trigger_intensity = 0
-            else:
-                # we stay in sustain mode until an off trigger event
-                pass
-        elif self.env_phase == 4:
-            # release is all done - shut off
-            self.intensity = self.env_phase = self.trigger_intensity = 0
-
-    def do_release(self):
-        logger.debug("release")
-        if self.release:
-            self.logger.debug("has release tween")
-            self.env_phase = 4
-            self.add_shape_tween('release')
-        else:
-            self.logger.debug("no tween, shutting off")
-            self.intensity = self.env_phase = self.trigger_intensity = 0
-
-    def tween_done(self):
-        self.logger.debug("tween done")
-        # this update will clear out completed tweens to hasTweens will return correct value
-        self.tweener.update(0)
-
-    def add_shape_tween(self, phase):
-        if hasattr(self.shape_tween, 'complete'):
-            # clear out previous tween
-            self.shape_tween.complete = True
-        if phase == 'attack':
-            intensity_delta = self.trigger_intensity
-        elif phase == 'decay':
-            intensity_delta = (self.trigger_intensity * self.sustain) - self.intensity
-        elif phase == 'release':
-            intensity_delta = -self.intensity
-        self.shape_tween = self.tweener.addTween(
-                self, # the object being tweened
-                tweenTime=getattr(self, phase),
-                tweenType=getattr(self.tweener, getattr(self, "%s_tween" % phase).upper()),
-                onCompleteFunction = self.tween_done,
-                intensity=intensity_delta,  # the attribute being tweened
-                                                )
-        self.last_update = 0
+    def set_intensity(self, intensity):
+        # mostly to be overridden by subclasses
+        self.intensity = intensity
 
     def trigger(self, intensity, **kwargs):
         """Trigger a light with code instead of midi"""
         # @@ need toggle mode implementation here
+        if self.simple:
+            return
         if intensity > 0:  # or note off message
-            if self.tweener.hasTweens() and self.bell_mode:
-                self.logger.debug("ignoring on trigger")
-                return
+            # if self.tweener.hasTweens() and self.bell_mode:
+                # self.logger.debug("ignoring on trigger")
+                # return
             self.trigger_intensity = intensity
             self.logger.debug("trigger on")
             self.intensity = 0  # reset light on trigger
-            self.env_phase = 1
-            if self.attack:
-                self.logger.debug("has attack - adding tween")
-                self.add_shape_tween('attack')
-            else:
-                self.intensity = intensity
+            self.adsr_envelope.trigger(state=1)
         else:
             if self.bell_mode:
                 # ignore release in bell mode
                 return
-            elif self.release:
-                self.trigger_intensity = intensity
-                self.logger.debug("trigger off - release")
-                self.do_release()
-            else:
-                if hasattr(self.shape_tween, 'complete'):
-                    # clear out previous tween
-                    self.logger.debug("cancelling tween")
-                    self.shape_tween.complete = True
-                self.logger.debug("trigger off, no release, shutting off")
-                self.intensity = self.env_phase = self.trigger_intensity = 0
+            print "trigger off"
+            self.adsr_envelope.trigger(state=0)
+            # self.trigger_intensity = 0
 
 
     def off(self):
@@ -258,9 +167,12 @@ class RGBLight(LightElement):
         # set up rgb values
 
     def trigger(self, intensity, **kwargs):
+        self.set_intensity(intensity)
+        super(RGBLight, self).trigger(intensity, **kwargs)
+
+    def set_intensity(self, intensity):
         self.intensity = intensity
         self.update_rgb()
-        super(RGBLight, self).trigger(intensity, **kwargs)
 
     def update(self, show):
         return_value = super(RGBLight, self).update(show)
@@ -348,20 +260,68 @@ class LightGroup(BaseLightElement):
             intensity = self.intensity_overide or sig_intensity
         else:
             intensity = 0
-        if sig_intensity and self.element_initialize:
-            self.set_special_state(self.element_initialize)
         for l in self.elements:
             l.trigger(intensity)
-        if (not sig_intensity) and self.element_initialize:
-            self.restore_defaults()
 
-    def set_special_state(self, state_dict):
-        for l in self.elements:
-            l.set_special_state(state_dict)
+class Pulse(LightGroup):
+    """
+    a cylon like moving pulse
 
-    def restore_defaults(self):
-        for l in self.elements:
-            l.restore_defaults()
+    center is always full on, and 0 width
+    width will then be node-node width
+    if width 3 - third node would be off when pulse squarely centered on a node
+    width == duration for tweens
+    change is always 0 to 1
+    """
+    def __init__(self,
+            # group=None,
+            left_width=3,
+            left_shape=tween.LINEAR,
+            right_width=3,
+            right_shape=tween.LINEAR,
+            **kwargs):
+
+        super(Pulse, self).__init__(**kwargs)
+        # self.group = group
+        self.center_position = 0
+        self.left_width = left_width
+        self.left_shape = left_shape
+        self.right_width = right_width
+        self.right_shape = right_shape
+
+
+    def update(self, show):
+        if self.trigger_intensity:
+            node_offset = self.center_position % 1
+            left_of_center = math.floor(self.center_position)
+            # print left_of_center
+            far_left = int(left_of_center - self.left_width)
+            nodes = []
+            for n in range(1, self.left_width + 1):
+                nodes.append(
+                        self.left_shape(n + node_offset, 1, -1, self.left_width + 1.0))
+            nodes.reverse()
+            for n in range(self.right_width + 1):
+                nodes.append(
+                        self.right_shape(n - node_offset, 1, -1, self.right_width + 1.0))
+            node_range = range(far_left, far_left + len(nodes))
+            print node_range
+            print nodes
+            for i, e in enumerate(self.elements):
+                if i in node_range:
+                    print i
+                    # TODO to changed when 255 assumption factored out
+                    e.set_intensity(int(255 * nodes[i - far_left]))
+                else:
+                    # blackout
+                    e.set_intensity(0)
+        else:
+            for i, e in enumerate(self.elements):
+                    # blackout
+                    e.set_intensity(0)
+
+    def trigger(self, sig_intensity, **kwargs):
+        self.trigger_intensity = sig_intensity
 
 # @@ EffectChase
 # an subclass of chase that moves an effect(s) along a set of elements

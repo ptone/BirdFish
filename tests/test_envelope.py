@@ -116,14 +116,10 @@ def test_adsr_envelope():
     e = envelope.ADSREnvelope()
     e.trigger(state=1)
     e.update(.25)
-    print e.index
-    print e.segments
-    # The attack segment of on segment
+    # The attack segment of on segment- d = depth 1
     d1_index = e.segments[e.index].index
     assert d1_index == 0
-    d1_seg = e.segments[e.index].segments[d1_index]
-    print d1_seg
-    print d1_seg.__dict__
+    # d1_seg = e.segments[e.index].segments[d1_index]
     assert e.value == .5
     e.update(.25)
     print e.current_segment_time_delta
@@ -135,6 +131,18 @@ def test_adsr_envelope():
     d1_index = e.segments[e.index].index
     assert d1_index == 1
     assert e.value == .9
+    e.update(.1)
+    d1_index = e.segments[e.index].index
+    assert d1_index == 1
+    assert e.value == .8
+    e.update(.1)
+    print "elapsed after additional: ", e.current_segment_time_delta
+    d1_index = e.segments[e.index].index
+    # check that on segments advanced to sustain
+    assert d1_index == 2
+    assert e.value == .8
+    e.update(1)
+    assert e.value == .8
 
 
 

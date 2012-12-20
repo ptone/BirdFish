@@ -1,3 +1,4 @@
+import sys
 import protomidi.portmidi as pypm
 import Queue
 import threading
@@ -184,6 +185,10 @@ class MidiDispatcher(threading.Thread):
                         f.write(str(m) + '\n')
                 # print d
                 # put it into a pipe or queue
+            count += 1
+            if not count % 10:
+                sys.stdout.write('.')
+                sys.stdout.flush()
             self._stopevent.wait(.1)
         print "%s ends" % (self.getName(),)
 
@@ -191,7 +196,7 @@ class MidiDispatcher(threading.Thread):
 
     def join (self,timeout=None):
         self._stopevent.set()
-        pypm.quit()
+        # pypm.quit()
         if self.file:
             try:
                 self.file_obj.close()

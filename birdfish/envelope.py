@@ -61,13 +61,13 @@ class EnvelopeProfile(object):
         self.duration = float(duration)
         self.label = label
 
-        assert self.duration > 0  # only a duration > 0 makes sense
+        # assert self.duration > 0  # only a duration > 0 makes sense
 
     def get_value(self, delta):
         if delta > self.duration:
             delta = self.duration
         # TODO save a self.value here for more consistency with envelopes?
-        print "updating %s %s at %s" % (self.label, self, delta)
+        # print "updating %s %s at %s" % (self.label, self, delta)
         return self.tween(delta, self.start, self.change, self.duration)
 
     def get_jump_time(self, value):
@@ -90,16 +90,22 @@ class EnvelopeSegment(object):
         self.elapsed = 0
         self.value = 0
 
-        assert self.duration > 0  # only a duration > 0 makes sense
+        # assert self.duration > 0  # only a duration > 0 makes sense
 
     def reset(self):
         self.elapsed = 0
         self.value = 0
 
+    def get_profile(self):
+        return self.profile
+
     def update(self, delta):
-        print "updating %s %s at delta %s" % (self.label, self, delta)
+        # print "updating %s %s at delta %s" % (self.label, self, delta)
         self.elapsed += delta
-        self.value = self.profile.get_value(self.elapsed)
+        if not self.duration:
+            self.value = self.profile.start + self.profile.change
+        else:
+            self.value = self.profile.get_value(self.elapsed)
         return self.value
 
 class StaticEnvelopeSegment(EnvelopeSegment):
@@ -109,6 +115,9 @@ class StaticEnvelopeSegment(EnvelopeSegment):
     def __init__(self, *args, **kwargs):
         super(StaticEnvelopeSegment, self).__init__(*args, **kwargs)
         self.duration = 0
+        # TODO - this is a hack so sustain doesn't get advanced over
+        # as part of an on envelope that has no attack
+        self.duration = 99999999999999999999999999999999
 
     def update(self, delta):
         return self.profile.start
@@ -118,6 +127,8 @@ class Envelope(EnvelopeSegment):
     def __init__(self, loop=0, label="envelope"):
         self.segments = []
         self.label = label
+        self.index = 0
+        self.advancing = True
 
         # Not sure I need this state
         self.running = False
@@ -125,8 +136,17 @@ class Envelope(EnvelopeSegment):
         self.pause_duration = 0
 
         self.loop = loop  # negative loop is infinite looping
-        self._duration = None
+        self._duration = 0
         self.reset()
+
+    def get_profile(self):
+        print "Envelop profile property, index: ", self.index
+        print self, self.label
+        if self.segments:
+            return self.segments[self.index].profile
+        elif hasattr(self, 'profile'):
+            return self.profile
+        raise RuntimeError("profile not available")
 
     def start(self):
         pass
@@ -146,37 +166,43 @@ class Envelope(EnvelopeSegment):
         self.current_segment_time_delta = 0
         for segment in self.segments:
             segment.reset()
+        self.advancing = True
 
     def advance(self):
         # return True if advanced
-        print "advancing"
-        print self.index, len(self.segments)
+        # print "advancing ", self.label
+        # print self.index, len(self.segments)
         if self.index + 1 == len(self.segments):  # last segment
             if self.loop and self.loop_counter:
-                print 'looping'
+                # print 'looping'
                 self.segments[self.index].reset()
                 self.index = 0
                 if self.loop > 0:  # this is a finite loop
                     self.loop_counter -= 1
-                    print 'loop counter now: ', self.loop_counter
+                    # print 'loop counter now: ', self.loop_counter
                     return True
-                print 'infinite loop counter now: ', self.loop_counter
+                # print 'infinite loop counter now: ', self.loop_counter
             else:
-                print "not looping on advance - staying at last segment"
+                # print "not looping on advance - staying at last segment"
                 # non-looping, or done with final loop
                 pass
         else:
             # proceed through sequence of segments
-            self.segments[self.index].reset()
+            if self.segments[self.index]:
+                # TODO - this is a reason to have always have a segment of some sort
+                # even if it is a null segment, rather than use none
+                self.segments[self.index].reset()
             self.index += 1
             self.current_segment_time_delta = 0
+            print "advanced to %s" % self.segments[self.index].label
             return True
+        self.advancing = False
         return False
 
 
     def update(self, delta):
-        print '---------------------'
-        print "updating %s %s at delta %s" % (self.label, self, delta)
+        # print '---------------------'
+        # print "updating %s %s at delta %s" % (self.label, self, delta)
 
         # delta is time passed since last update
         if self.index + 1 > len(self.segments):
@@ -184,12 +210,25 @@ class Envelope(EnvelopeSegment):
             # just reurn last value until something resets index
             return self.value
         segment = self.segments[self.index]
+        if not segment.duration:
+            # for example, no attack value
+            # self.advance()
+            pass
         self.current_segment_time_delta += delta
-        print "self current elapsed %s" % self.current_segment_time_delta
-        if (segment.duration and
-                (self.current_segment_time_delta > segment.duration)):
+        print "%s-%s: self current elapsed %s, after delta %s" % (
+                id(self),
+                self.label,
+                self.current_segment_time_delta,
+                delta,
+                )
+        print "current segment ", segment, segment.label
+        # TODO this is advancing past end of on segemnt,
+        # when that on segment only contains a 0 duration attack, and no decay
+        # not going into any sustain
+        if (self.current_segment_time_delta > segment.duration and
+                not isinstance(segment, StaticEnvelopeSegment)):
             overage = self.current_segment_time_delta - segment.duration
-            # TODO don't handle case where overage > new segment
+            # TODO currently don't handle case where overage > new segment
             # duration - could need recursion
 
             if self.advance():
@@ -198,6 +237,7 @@ class Envelope(EnvelopeSegment):
                 segment = self.segments[self.index]
 
         self.value = segment.update(delta)
+        print self.value
         return self.value
 
     @property
@@ -207,7 +247,14 @@ class Envelope(EnvelopeSegment):
         return self._duration
 
     def set_duration(self):
-        self._duration = sum([segment.duration for segment in self.segments if segment.duration > 0])
+        # a duration of 0 means it is infinite
+        self._duration = 0
+        for segment in self.segments:
+            if segment and segment.duration:
+                self._duration += segment.duration
+            else:
+                self._duration = 0
+        # self._duration = sum([segment.duration for segment in self.segments if segment.duration > 0])
 
 
 class TriggeredEnvelope(Envelope):
@@ -233,14 +280,46 @@ class TriggeredEnvelope(Envelope):
             self.state = state
             if state:
                 # on trigger
+                print "trigger on - resetting"
                 self.reset()
+                print "%s-%s: self post reset current elapsed %s" % (
+                        id(self),
+                        self.label,
+                        self.current_segment_time_delta,
+                        )
             else:
                 # off trigger
-                print 'advance'
+                # print 'advance'
                 self.advance()
-                if self.value != self.segments[1].profile.start:
+                # print self.segments
+                print "current value: %s" % self.value
+                print "current change for release: %s" % self.segments[1].get_profile().change
+                if self.value < self.segments[1].get_profile().start:
+                    # TODO this shortcut works on release, but for attack?
+                    # also need to sort out when in decay (say .9), and release
+                    # start is .8 - now will be greater - want a way to change
+                    # release start value for this time only
+                    # perhaps start value should always just be current value - for when greater
+                    # if dimmer, want shorter release
+                    # if brigher (.9) then want standard release time but greater change
+
                     print "shortcutting time"
-                    self.current_segment_time_delta += self.segments[1].profile.get_jump_time(self.value)
+                    jump_value = self.segments[1].get_profile().get_jump_time(self.value)
+                    print jump_value
+                    self.update(jump_value)
+                    # self.current_segment_time_delta += self.segments[1].profile.get_jump_time(self.value)
+                    # self.segments[0].segments[0].current_segment_time_delta = self.current_segment_time_delta
+                # else:
+                # print "set change of release"
+                # TODO - this won't work for multisegment release
+                # if not hasattr(self.segments[1], 'segments'):
+                # self.segments[1].segments[0].profile.change = -1 * self.value
+                # self.segments[1].segments[0].profile.start = self.value
+                # else:
+                    # print "has segments"
+                    # print self.segments[1].segments
+
+                print "new current change for release: %s" % self.segments[1].get_profile().change
         self.state = state
 
     def update(self, delta):
@@ -265,10 +344,10 @@ class ADSREnvelope(TriggeredEnvelope):
             attack_shape=tween.LINEAR, attack_duration=0.5,
             decay_shape=tween.LINEAR, decay_duration=.2,
             release_shape=tween.LINEAR, release_duration=.5,
-            bell_mode=False, label='ADSR-envelope'):
+            bell_mode=False, label='ADSR-envelope', **kwargs):
 
         super(ADSREnvelope, self).__init__(loop=0, label=label)
-
+        # print attack_duration
         self.attack_envelope = EnvelopeSegment(
                 tween=attack_shape,
                 change=peak_value,
@@ -304,10 +383,12 @@ class ADSREnvelope(TriggeredEnvelope):
                 label="release",
                 )
         self.off_envelope = Envelope(label="off-envelope")
-        if self.release_envelope.profile.change and self.release_envelope.duration:
-            self.off_envelope.segments.append(self.release_envelope)
+        # if self.release_envelope.profile.change and self.release_envelope.duration:
+        self.off_envelope.segments.append(self.release_envelope)
         self.segments = [self.on_envelope, self.off_envelope]
 
+    # def trigger(self, state=1, value=1.0):
+        # if trigger off during attack, skip decay
 
 class EnvelopeGenerator(object):
     pass

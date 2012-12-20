@@ -6,6 +6,7 @@ b = start value
 c = change in value
 d = total duration
 """
+# see also: http://gizma.com/easing
 
 import math
 
@@ -33,6 +34,11 @@ def IN_CIRC(t, b, c, d):
     #   return -c * (Math.sqrt(1 - (t/=d)*t) - 1) + b;
     t/=d
     return -c * (math.sqrt(1 - (t)*t) - 1) + b
+
+def OUT_CIRC(t, b, c, d):
+    t/=d
+    t -= 1
+    return c * (math.sqrt(1 - (t)*t)) + b
 
 def LINEAR (t, b, c, d):
     return c*t/d + b
@@ -198,14 +204,18 @@ def jump_time(tween, value, b, c, d):
     resolution = .01
     time_slice = d * resolution
     current_time = 0
-    accuracy = abs((b - c)/200.0)
+    accuracy = abs(c/200.0)
     val_min = value - accuracy
     val_max = value + accuracy
     for i in range(100):
         temp_value = tween(current_time, b, c, d)
         if val_max >= temp_value >= val_min:
-            print temp_value
+            print "test value: %s, new time: %s" % (temp_value, current_time)
             return current_time
         current_time += time_slice
+    print current_time
+    print tween, value, b, c, d
+    print "min, max"
+    print val_min, val_max
     raise ValueError('Unable to determine jump time')
 
