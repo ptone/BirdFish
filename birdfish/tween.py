@@ -201,6 +201,8 @@ def bisect_jump_time(tween, value, b, c, d):
             upper = t
 
 def jump_time(tween, value, b, c, d):
+    if value == b:
+        return 0
     resolution = .01
     time_slice = d * resolution
     current_time = 0
@@ -214,7 +216,7 @@ def jump_time(tween, value, b, c, d):
             return current_time
         current_time += time_slice
     print current_time
-    print tween, value, b, c, d
+    print tween, value, b, c, d, time_slice, temp_value
     print "min, max"
     print val_min, val_max
     raise ValueError('Unable to determine jump time')
