@@ -122,7 +122,6 @@ class LightElement(BaseLightElement):
         self.intensity = intensity
 
     def trigger(self, intensity, **kwargs):
-        """Trigger a light with code instead of midi"""
         # @@ need toggle mode implementation here
         if self.simple:
             return
@@ -132,7 +131,7 @@ class LightElement(BaseLightElement):
                 # self.logger.debug("ignoring on trigger")
                 # return
             self.trigger_intensity = intensity
-            self.logger.debug("%s: trigger on" % self.name)
+            self.logger.debug("%s: trigger on @ %s" % (self.name, intensity))
             self.intensity = 0  # reset light on trigger
             self.adsr_envelope.trigger(state=1)
         elif intensity == 0 and self.trigger_state:
@@ -231,7 +230,7 @@ class RGBLight(LightElement):
     hue = property(_get_hue, _set_hue)
     saturation = property(_get_saturation, _set_saturation)
 
-class LightGroup(BaseLightElement):
+class LightGroup(BaseLightElement):  # TODO why base light element, and not light element?
     """A collection of light Elements triggered in collectively in some form"""
     def __init__(self, *args, **kwargs):
         super(LightGroup, self).__init__(*args, **kwargs)
@@ -245,6 +244,7 @@ class LightGroup(BaseLightElement):
         self.intensity_overide = 0
         self.element_initialize = {}
         self.logger = logging.getLogger("%s.%s.%s" % (__name__, "LightGroup", self.name))
+        self.trigger_state = 0  # TODO ie this could go away if this was subclassed differently
 
     # @@ problematic - problems with __init__ in base classes:
     # def __setattr__(self,key,val):
@@ -288,40 +288,59 @@ class Pulse(LightGroup):
         self.left_shape = left_shape
         self.right_width = right_width
         self.right_shape = right_shape
+        self.nodes = []  # a list of element values for pulse
+        self.node_range = []  # index range of current pulse
 
+    def set_current_nodes(self):
+        node_offset = self.center_position % 1
+        left_of_center = math.floor(self.center_position)
+        # print left_of_center
+        far_left = int(left_of_center - self.left_width)
+        self.nodes = []
+        for n in range(1, self.left_width + 1):
+            self.nodes.append(
+                    self.left_shape(n + node_offset, 1, -1, self.left_width + 1.0))
+        self.nodes.reverse()
+        for n in range(self.right_width + 1):
+            self.nodes.append(
+                    self.right_shape(n - node_offset, 1, -1, self.right_width + 1.0))
+        self.node_range = range(far_left, far_left + len(self.nodes))
+        print self.node_range
+        print self.nodes
 
     def update(self, show):
-        if self.trigger_intensity:
-            node_offset = self.center_position % 1
-            left_of_center = math.floor(self.center_position)
-            # print left_of_center
-            far_left = int(left_of_center - self.left_width)
-            nodes = []
-            for n in range(1, self.left_width + 1):
-                nodes.append(
-                        self.left_shape(n + node_offset, 1, -1, self.left_width + 1.0))
-            nodes.reverse()
-            for n in range(self.right_width + 1):
-                nodes.append(
-                        self.right_shape(n - node_offset, 1, -1, self.right_width + 1.0))
-            node_range = range(far_left, far_left + len(nodes))
-            print node_range
-            print nodes
-            for i, e in enumerate(self.elements):
-                if i in node_range:
-                    print i
-                    # TODO to changed when 255 assumption factored out
-                    e.trigger(int(255 * nodes[i - far_left]))
-                else:
-                    # blackout
-                    e.trigger(0)
-        else:
-            for i, e in enumerate(self.elements):
-                    # blackout
-                    e.trigger(0)
+        # TODO seems I've moved it all to the trigger
+        pass
 
-    def trigger(self, sig_intensity, **kwargs):
-        self.trigger_intensity = sig_intensity
+    def trigger(self, intensity, **kwargs):
+        if intensity > 0 and self.trigger_state == 0:  # or note off message
+            if not self.nodes:
+                self.set_current_nodes()
+            self.trigger_state = 1
+            self.trigger_intensity = intensity
+            self.logger.debug("%s: pulse trigger on @ %s" % (self.name, intensity))
+            for i, e in enumerate(self.elements):
+                if i in self.node_range:
+                    # print i
+                    # TODO to 0-1 when 255 assumption factored out
+                    # TODO problem here with a moving pulse:
+                    #   how does the element handle multiple on triggers
+                    e.trigger(int(255 * self.nodes[i - self.node_range[0]]))
+        elif intensity == 0 and self.trigger_state:
+                self.trigger_state = 0
+
+                # if self.bell_mode:
+                    # TODO does bell apply to pulse?
+                    # ignore release in bell mode
+                    # return
+
+                self.logger.debug("%s: pulse trigger off" % self.name)
+                for i, e in enumerate(self.elements):
+                        # blackout
+                        e.trigger(0)
+
+
+
 
 # @@ EffectChase
 # an subclass of chase that moves an effect(s) along a set of elements
