@@ -100,7 +100,7 @@ class LightElement(BaseLightElement):
         self.last_update = show.timecode
         if self.adsr_envelope.advancing:
             intensity_scale = self.adsr_envelope.update(time_delta)
-            self.intensity = self.trigger_intensity * intensity_scale
+            self.set_intensity(self.trigger_intensity * intensity_scale)
         else:
             print self.name
             print 'not advancing, intensity: {}'.format(self.intensity)
@@ -169,10 +169,6 @@ class RGBLight(LightElement):
         self.channels[start_channel + 1] = 'green'
         self.channels[start_channel + 2] = 'blue'
         # set up rgb values
-
-    def trigger(self, intensity, **kwargs):
-        self.set_intensity(intensity)
-        super(RGBLight, self).trigger(intensity, **kwargs)
 
     def set_intensity(self, intensity):
         self.intensity = intensity
