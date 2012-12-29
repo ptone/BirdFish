@@ -77,6 +77,7 @@ class LightElement(BaseLightElement):
         self.adsr_envelope = ADSREnvelope(**kwargs)
         # a simple element has values set externally and does not update
         self.simple = False
+        self.trigger_state = 0
 
         self.logger = logging.getLogger(
                 "%s.%s.%s" % (__name__, "LightElement", self.name))
@@ -125,21 +126,24 @@ class LightElement(BaseLightElement):
         # @@ need toggle mode implementation here
         if self.simple:
             return
-        if intensity > 0:  # or note off message
+        if intensity > 0 and self.trigger_state == 0:  # or note off message
+            self.trigger_state = 1
             # if self.tweener.hasTweens() and self.bell_mode:
                 # self.logger.debug("ignoring on trigger")
                 # return
             self.trigger_intensity = intensity
-            self.logger.debug("trigger on")
+            self.logger.debug("%s: trigger on" % self.name)
             self.intensity = 0  # reset light on trigger
             self.adsr_envelope.trigger(state=1)
-        else:
-            if self.bell_mode:
-                # ignore release in bell mode
-                return
-            print "trigger off"
-            self.adsr_envelope.trigger(state=0)
-            # self.trigger_intensity = 0
+        elif intensity == 0 and self.trigger_state:
+                self.trigger_state = 0
+                if self.bell_mode:
+                    # ignore release in bell mode
+                    return
+                self.logger.debug("%s: trigger off" % self.name)
+                self.adsr_envelope.trigger(state=0)
+                # note can not set trigger_intensity to 0 here
+        # else redundant trigger
 
 
     def off(self):
@@ -311,14 +315,14 @@ class Pulse(LightGroup):
                 if i in node_range:
                     print i
                     # TODO to changed when 255 assumption factored out
-                    e.set_intensity(int(255 * nodes[i - far_left]))
+                    e.trigger(int(255 * nodes[i - far_left]))
                 else:
                     # blackout
-                    e.set_intensity(0)
+                    e.trigger(0)
         else:
             for i, e in enumerate(self.elements):
                     # blackout
-                    e.set_intensity(0)
+                    e.trigger(0)
 
     def trigger(self, sig_intensity, **kwargs):
         self.trigger_intensity = sig_intensity
