@@ -1,5 +1,8 @@
-import pytweener
+import logging
 import tween
+
+logger = logging.getLogger('birdfish')
+logger.setLevel(logging.INFO)
 
 """
 Notes:
@@ -140,8 +143,7 @@ class Envelope(EnvelopeSegment):
         self.reset()
 
     def get_profile(self):
-        print "Envelop profile property, index: ", self.index
-        print self, self.label
+        logger.debug("Envelop %s profile property, index: %s" % (self.label, self.index))
         if self.segments:
             return self.segments[self.index].profile
         elif hasattr(self, 'profile'):
@@ -170,20 +172,14 @@ class Envelope(EnvelopeSegment):
 
     def advance(self):
         # return True if advanced
-        # print "advancing ", self.label
-        # print self.index, len(self.segments)
         if self.index + 1 == len(self.segments):  # last segment
             if self.loop and self.loop_counter:
-                # print 'looping'
                 self.segments[self.index].reset()
                 self.index = 0
                 if self.loop > 0:  # this is a finite loop
                     self.loop_counter -= 1
-                    # print 'loop counter now: ', self.loop_counter
                     return True
-                # print 'infinite loop counter now: ', self.loop_counter
             else:
-                # print "not looping on advance - staying at last segment"
                 # non-looping, or done with final loop
                 pass
         else:
@@ -194,16 +190,13 @@ class Envelope(EnvelopeSegment):
                 self.segments[self.index].reset()
             self.index += 1
             self.current_segment_time_delta = 0
-            print "advanced to %s" % self.segments[self.index].label
+            logger.debug("advanced to %s" % self.segments[self.index].label)
             return True
         self.advancing = False
         return False
 
 
     def update(self, delta):
-        # print '---------------------'
-        # print "updating %s %s at delta %s" % (self.label, self, delta)
-
         # delta is time passed since last update
         if self.index + 1 > len(self.segments):
             # non looping or end of finite loop
@@ -215,13 +208,13 @@ class Envelope(EnvelopeSegment):
             # self.advance()
             pass
         self.current_segment_time_delta += delta
-        print "%s-%s: self current elapsed %s, after delta %s" % (
+        logger.debug("%s-%s: self current elapsed %s, after delta %s" % (
                 id(self),
                 self.label,
                 self.current_segment_time_delta,
                 delta,
-                )
-        print "current segment ", segment, segment.label
+                ))
+        logger.debug("current segment %s" % segment.label)
         # TODO this is advancing past end of on segemnt,
         # when that on segment only contains a 0 duration attack, and no decay
         # not going into any sustain
@@ -232,12 +225,11 @@ class Envelope(EnvelopeSegment):
             # duration - could need recursion
 
             if self.advance():
-                print 'advanced, new delta: ', overage
+                logger.debug('advanced, new delta: %s' % overage)
                 delta = self.current_segment_time_delta = overage
                 segment = self.segments[self.index]
 
         self.value = segment.update(delta)
-        print self.value
         return self.value
 
     @property
@@ -280,20 +272,20 @@ class TriggeredEnvelope(Envelope):
             self.state = state
             if state:
                 # on trigger
-                print "trigger on - resetting"
+                logger.debug("envelope trigger on - resetting")
                 self.reset()
-                print "%s-%s: self post reset current elapsed %s" % (
+                logger.debug("%s-%s: self post reset current elapsed %s" % (
                         id(self),
                         self.label,
                         self.current_segment_time_delta,
-                        )
+                        ))
             else:
                 # off trigger
                 # print 'advance'
                 self.advance()
                 # print self.segments
-                print "current value: %s" % self.value
-                print "current change for release: %s" % self.segments[1].get_profile().change
+                logger.debug("current value: %s" % self.value)
+                logger.debug("current change for release: %s" % self.segments[1].get_profile().change)
                 if self.value < self.segments[1].get_profile().start:
                     # TODO this shortcut works on release, but for attack?
                     # also need to sort out when in decay (say .9), and release
@@ -303,9 +295,7 @@ class TriggeredEnvelope(Envelope):
                     # if dimmer, want shorter release
                     # if brigher (.9) then want standard release time but greater change
 
-                    print "shortcutting time"
                     jump_value = self.segments[1].get_profile().get_jump_time(self.value)
-                    print jump_value
                     self.update(jump_value)
                     # self.current_segment_time_delta += self.segments[1].profile.get_jump_time(self.value)
                     # self.segments[0].segments[0].current_segment_time_delta = self.current_segment_time_delta
@@ -319,7 +309,7 @@ class TriggeredEnvelope(Envelope):
                     # print "has segments"
                     # print self.segments[1].segments
 
-                print "new current change for release: %s" % self.segments[1].get_profile().change
+                logger.debug("new current change for release: %s" % self.segments[1].get_profile().change)
         self.state = state
 
     def update(self, delta):
