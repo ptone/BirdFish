@@ -300,7 +300,7 @@ class Pulse(LightGroup):
 
     def setup_move(self):
         if not self.envelope:
-            self.envelope = EnvelopeSegment()
+            self.envelope = EnvelopeSegment(tween=tween.IN_OUT_CUBIC)
         self.envelope.profile.change = self.moveto - self.center_position
         self.envelope.profile.start = self.center_position
         if self.speed_mode == 'duration':
@@ -343,15 +343,27 @@ class Pulse(LightGroup):
     def update(self, show):
         if not self.trigger_intensity:
             return
+        if self.current_moveto != self.moveto:
+            self.setup_move()
         if self.moveto is not None and (self.center_position != self.current_moveto):
-            if self.current_moveto != self.moveto:
-                self.setup_move()
             time_delta = self.get_time_delta(show.timecode)
             if time_delta < 0:
                 return
-            self.center_position = self.envelope.update(time_delta)
+            # this min max business is because the tween algos will overshoot
+            if self.moveto > self.center_position:
+                self.center_position = min(self.moveto,
+                        self.envelope.update(time_delta))
+            else:
+                self.center_position = max(self.moveto,
+                        self.envelope.update(time_delta))
+
             print "Centered @ %s" % self.center_position
             self.render()
+            # pong mode:
+            if self.center_position == self.end_pos:
+                self.moveto = self.start_pos
+            if self.center_position == self.start_pos:
+                self.moveto = self.end_pos
 
 
     def render(self):
@@ -362,12 +374,12 @@ class Pulse(LightGroup):
         self.elements[max(0, self.node_range[0] - 1)].trigger(0)
         self.elements[min(len(self.elements) - 1, self.node_range[-1] + 1)].trigger(0)
         for i, e in enumerate(self.elements):
+            e.trigger(0)
             if i in self.node_range:
                 # print i
                 # TODO to 0-1 when 255 assumption factored out
                 # TODO problem here with a moving pulse:
                 #   how does the element handle multiple on triggers
-                e.trigger(0)
                 # the trigger 0 is needed otherwise the leading edge just stays
                 # dim
                 e.trigger(int(255 * self.nodes[i - self.node_range[0]]))
@@ -386,7 +398,7 @@ class Pulse(LightGroup):
                     # return
 
                 self.logger.debug("%s: pulse trigger off" % self.name)
-                for i, e in enumerate(self.elements):
+                for e in self.elements:
                         # blackout
                         e.trigger(0)
                 self.center_position = self.start_pos
