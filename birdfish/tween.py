@@ -203,11 +203,13 @@ def bisect_jump_time(tween, value, b, c, d):
 def jump_time(tween, value, b, c, d):
     if value == b:
         return 0
+    if value == (b + c):
+        return d
     resolution = .01
     time_slice = d * resolution
     current_time = 0
     accuracy = abs(c/200.0)
-    val_min = value - accuracy
+    val_min = max(0, value - accuracy)
     val_max = value + accuracy
     for i in range(100):
         temp_value = tween(current_time, b, c, d)
