@@ -82,22 +82,23 @@ class LightElement(BaseLightElement):
         self.logger = logging.getLogger(
                 "%s.%s.%s" % (__name__, "LightElement", self.name))
 
+    def get_time_delta(self, current_time):
+        if not self.last_update:
+            # can't set this from trigger - since don't have access to show
+            self.last_update = current_time
+            # returning -1 signals that no delta is yet available
+            return -1
+        time_delta = current_time - self.last_update
+        self.last_update = current_time
+        return time_delta
+
     def update(self, show):
-        # print threading.active_count()
-        # if hasattr(self, 'debug'):
-            # if self.intensity and self.env_phase == 4:
-                # self.logger.debug("intensity: %s" % self.intensity)
-            # if self.env_phase:
-                # print self.env_phase
         if (self.simple or not (self.intensity or self.trigger_intensity)):
             # light is inactive or in sustain mode
             return self.intensity
-        if not self.last_update:
-            # can't set this from trigger - since don't have access to show
-            self.last_update = show.timecode
+        time_delta = self.get_time_delta(show.timecode)
+        if time_delta < 0:
             return self.intensity
-        time_delta = show.timecode - self.last_update
-        self.last_update = show.timecode
         if self.adsr_envelope.advancing:
             intensity_scale = self.adsr_envelope.update(time_delta)
             self.set_intensity(self.trigger_intensity * intensity_scale)
@@ -105,8 +106,7 @@ class LightElement(BaseLightElement):
             print self.name
             print 'not advancing, intensity: {}'.format(self.intensity)
             self.trigger_intensity = 0
-            if self.intensity < 0:
-                self.intensity = 0
+            self.intensity = max(0, self.intensity)
             print 'not advancing, intensity: {}'.format(self.intensity)
             print 'not advancing, trigger intensity: {}'.format(self.trigger_intensity)
             self.last_update = 0
