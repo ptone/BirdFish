@@ -16,7 +16,8 @@ from scene import SceneManager
 from birdfish.output.base import DefaultNetwork
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('birdfish')
+logger.setLevel(logging.INFO)
 
 frame_rate = 30
 
@@ -103,12 +104,12 @@ class LightElement(BaseLightElement):
             intensity_scale = self.adsr_envelope.update(time_delta)
             self.set_intensity(self.trigger_intensity * intensity_scale)
         else:
-            print self.name
-            print 'not advancing, intensity: {}'.format(self.intensity)
+            logger.debug(self.name)
+            logger.debug('not advancing, intensity: {}'.format(self.intensity))
             self.trigger_intensity = 0
             self.intensity = max(0, self.intensity)
-            print 'not advancing, intensity: {}'.format(self.intensity)
-            print 'not advancing, trigger intensity: {}'.format(self.trigger_intensity)
+            logger.debug('not advancing, intensity: {}'.format(self.intensity))
+            logger.debug('not advancing, trigger intensity: {}'.format(self.trigger_intensity))
             self.last_update = 0
 
         # moved dmx update to show update, to accomodate effects
@@ -125,11 +126,8 @@ class LightElement(BaseLightElement):
         # @@ need toggle mode implementation here
         if self.simple:
             return
-        if intensity > 0 and self.trigger_state == 0:  # or note off message
+        if intensity > 0 and self.trigger_state == 0:
             self.trigger_state = 1
-            # if self.tweener.hasTweens() and self.bell_mode:
-                # self.logger.debug("ignoring on trigger")
-                # return
             self.trigger_intensity = intensity
             self.logger.debug("%s: trigger on @ %s" % (self.name, intensity))
             self.intensity = 0  # reset light on trigger
@@ -324,9 +322,7 @@ class Pulse(LightGroup):
 
     def set_current_nodes(self):
         node_offset = self.center_position % 1
-        print node_offset
         left_of_center = math.floor(self.center_position)
-        # print left_of_center
         far_left = int(left_of_center - self.left_width)
         self.nodes = []
         for n in range(self.left_width + 1):
@@ -337,16 +333,15 @@ class Pulse(LightGroup):
             self.nodes.append(0)
             far_left -= 1
         self.nodes.reverse()
-        print "OUTCIRC-EDGE"
         for n in range(1, self.right_width + 1):
             self.nodes.append(
                     # max(0.0, self.right_shape(max(0, n - node_offset), 1, -1, self.right_width + 1.0)))
                     self.right_shape(max(0, n - node_offset), 1, -1, self.right_width + 1.0))
         self.nodes.append(0)
         self.node_range = range(far_left, far_left + len(self.nodes))
-        print "NodeData:"
-        print self.node_range
-        print self.nodes
+        logger.debug("NodeData:")
+        logger.debug(self.node_range)
+        logger.debug(self.nodes)
 
     def update(self, show):
         if not self.trigger_intensity:
@@ -365,13 +360,19 @@ class Pulse(LightGroup):
                 self.center_position = max(self.moveto,
                         self.envelope.update(time_delta))
 
-            print "Centered @ %s" % self.center_position
+            logger.debug("Centered @ %s" % self.center_position)
             self.render()
             # pong mode:
             if self.center_position == self.end_pos:
                 self.moveto = self.start_pos
+                # lw = self.left_width
+                # self.left_width = self.right_width
+                # self.right_width = lw
             if self.center_position == self.start_pos:
                 self.moveto = self.end_pos
+                # rw = self.right_width
+                # self.right_width = self.left_width
+                # self.left_width = rw
 
 
     def render(self):
