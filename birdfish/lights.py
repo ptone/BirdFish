@@ -11,7 +11,7 @@ import random
 import logging
 import pytweener
 import tween
-from envelope import ADSREnvelope
+from envelope import ADSREnvelope, EnvelopeSegment
 from scene import SceneManager
 from birdfish.output.base import DefaultNetwork
 
@@ -230,7 +230,7 @@ class RGBLight(LightElement):
     hue = property(_get_hue, _set_hue)
     saturation = property(_get_saturation, _set_saturation)
 
-class LightGroup(BaseLightElement):  # TODO why base light element, and not light element?
+class LightGroup(LightElement):  # TODO why base light element, and not light element?
     """A collection of light Elements triggered in collectively in some form"""
     def __init__(self, *args, **kwargs):
         super(LightGroup, self).__init__(*args, **kwargs)
@@ -284,6 +284,13 @@ class Pulse(LightGroup):
         super(Pulse, self).__init__(**kwargs)
         # self.group = group
         self.center_position = 0
+        self.moveto = None
+        self.current_moveto = None
+        self.speed_mode = 'duration' # or 'speed' of units per second
+        self.speed = 1
+        self.envelope = None
+        self.start_pos = 0
+        self.end_pos = 10
         self.left_width = left_width
         self.left_shape = left_shape
         self.right_width = right_width
@@ -291,41 +298,87 @@ class Pulse(LightGroup):
         self.nodes = []  # a list of element values for pulse
         self.node_range = []  # index range of current pulse
 
+    def setup_move(self):
+        if not self.envelope:
+            self.envelope = EnvelopeSegment()
+        self.envelope.profile.change = self.moveto - self.center_position
+        self.envelope.profile.start = self.center_position
+        if self.speed_mode == 'duration':
+            self.envelope.profile.duration = self.speed
+        elif self.speed_mode == 'speed':
+            self.envelope.profile.duration = (
+                    # ie moving 9 spaces, at 3 spaces per sec = 3 sec
+                    self.envelope.profile.change / self.speed)
+        self.envelope.reset()
+        self.current_moveto = self.moveto
+
+
+
     def set_current_nodes(self):
         node_offset = self.center_position % 1
+        print node_offset
         left_of_center = math.floor(self.center_position)
         # print left_of_center
         far_left = int(left_of_center - self.left_width)
         self.nodes = []
-        for n in range(1, self.left_width + 1):
+        for n in range(self.left_width + 1):
             self.nodes.append(
+                    # max(0.0, self.left_shape(n + node_offset, 1, -1, self.left_width + 1.0)))
                     self.left_shape(n + node_offset, 1, -1, self.left_width + 1.0))
+        if far_left >= 1:
+            self.nodes.append(0)
+            far_left -= 1
         self.nodes.reverse()
-        for n in range(self.right_width + 1):
+        print "OUTCIRC-EDGE"
+        for n in range(1, self.right_width + 1):
             self.nodes.append(
-                    self.right_shape(n - node_offset, 1, -1, self.right_width + 1.0))
+                    # max(0.0, self.right_shape(max(0, n - node_offset), 1, -1, self.right_width + 1.0)))
+                    self.right_shape(max(0, n - node_offset), 1, -1, self.right_width + 1.0))
+        self.nodes.append(0)
         self.node_range = range(far_left, far_left + len(self.nodes))
+        print "NodeData:"
         print self.node_range
         print self.nodes
 
     def update(self, show):
-        # TODO seems I've moved it all to the trigger
-        pass
+        if not self.trigger_intensity:
+            return
+        if self.moveto is not None and (self.center_position != self.current_moveto):
+            if self.current_moveto != self.moveto:
+                self.setup_move()
+            time_delta = self.get_time_delta(show.timecode)
+            if time_delta < 0:
+                return
+            self.center_position = self.envelope.update(time_delta)
+            print "Centered @ %s" % self.center_position
+            self.render()
+
+
+    def render(self):
+        # if not self.nodes:
+            # self.set_current_nodes()
+        # TODO why not just iterate over nodes?
+        self.set_current_nodes()
+        self.elements[max(0, self.node_range[0] - 1)].trigger(0)
+        self.elements[min(len(self.elements) - 1, self.node_range[-1] + 1)].trigger(0)
+        for i, e in enumerate(self.elements):
+            if i in self.node_range:
+                # print i
+                # TODO to 0-1 when 255 assumption factored out
+                # TODO problem here with a moving pulse:
+                #   how does the element handle multiple on triggers
+                e.trigger(0)
+                # the trigger 0 is needed otherwise the leading edge just stays
+                # dim
+                e.trigger(int(255 * self.nodes[i - self.node_range[0]]))
 
     def trigger(self, intensity, **kwargs):
+        self.trigger_intensity = intensity
         if intensity > 0 and self.trigger_state == 0:  # or note off message
-            if not self.nodes:
-                self.set_current_nodes()
             self.trigger_state = 1
-            self.trigger_intensity = intensity
             self.logger.debug("%s: pulse trigger on @ %s" % (self.name, intensity))
-            for i, e in enumerate(self.elements):
-                if i in self.node_range:
-                    # print i
-                    # TODO to 0-1 when 255 assumption factored out
-                    # TODO problem here with a moving pulse:
-                    #   how does the element handle multiple on triggers
-                    e.trigger(int(255 * self.nodes[i - self.node_range[0]]))
+            self.center_position = self.start_pos
+            self.render()
         elif intensity == 0 and self.trigger_state:
                 self.trigger_state = 0
 
@@ -338,9 +391,28 @@ class Pulse(LightGroup):
                 for i, e in enumerate(self.elements):
                         # blackout
                         e.trigger(0)
+                self.center_position = self.start_pos
+                if self.moveto is not None:
+                    self.moveto = self.end_pos  # TODO - should this be left at last set?
+                    self.setup_move()
 
 
+class EnvelopeElement(LightElement):
+    """
+    updates a basic envelope object with a change in timeline
+    """
+    def __init__(self, *args, **kwargs):
+        super(EnvelopeElement, self).__init__(*args, **kwargs)
+        self.envelope = kwargs.get('envelope', None)
+        self.value = 0
 
+    def update(self, show):
+        if not self.envelope:
+            return
+        time_delta = self.get_time_delta(show.timecode)
+        if time_delta < 0:
+            return
+        self.value = self.envelope.update(time_delta)
 
 # @@ EffectChase
 # an subclass of chase that moves an effect(s) along a set of elements
