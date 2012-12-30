@@ -377,11 +377,9 @@ class Pulse(LightGroup):
         if intensity > 0 and self.trigger_state == 0:  # or note off message
             self.trigger_state = 1
             self.logger.debug("%s: pulse trigger on @ %s" % (self.name, intensity))
-            self.center_position = self.start_pos
-            self.render()
         elif intensity == 0 and self.trigger_state:
                 self.trigger_state = 0
-
+                self.last_update = 0
                 # if self.bell_mode:
                     # TODO does bell apply to pulse?
                     # ignore release in bell mode
