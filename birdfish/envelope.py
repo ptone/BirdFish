@@ -1,8 +1,6 @@
 import logging
 import tween
-
-logger = logging.getLogger('birdfish')
-logger.setLevel(logging.INFO)
+from birdfish.log_setup import logger
 
 """
 Notes:

@@ -15,9 +15,11 @@ from envelope import ADSREnvelope, EnvelopeSegment
 from scene import SceneManager
 from birdfish.output.base import DefaultNetwork
 
+from birdfish.log_setup import logger
 
-logger = logging.getLogger('birdfish')
-logger.setLevel(logging.INFO)
+# logger = logging.getLogger('birdfish')
+# logger.setLevel(logging.INFO)
+# print logger
 
 frame_rate = 30
 
@@ -80,8 +82,8 @@ class LightElement(BaseLightElement):
         self.simple = False
         self.trigger_state = 0
 
-        self.logger = logging.getLogger(
-                "%s.%s.%s" % (__name__, "LightElement", self.name))
+        # self.logger = logging.getLogger(
+                # "%s.%s.%s" % (__name__, "LightElement", self.name))
 
     def get_time_delta(self, current_time):
         if not self.last_update:
@@ -129,7 +131,7 @@ class LightElement(BaseLightElement):
         if intensity > 0 and self.trigger_state == 0:
             self.trigger_state = 1
             self.trigger_intensity = intensity
-            self.logger.debug("%s: trigger on @ %s" % (self.name, intensity))
+            logger.debug("%s: trigger on @ %s" % (self.name, intensity))
             self.intensity = 0  # reset light on trigger
             self.adsr_envelope.trigger(state=1)
         elif intensity == 0 and self.trigger_state:
@@ -137,13 +139,13 @@ class LightElement(BaseLightElement):
                 if self.bell_mode:
                     # ignore release in bell mode
                     return
-                self.logger.debug("%s: trigger off" % self.name)
+                logger.debug("%s: trigger off" % self.name)
                 self.adsr_envelope.trigger(state=0)
                 # note can not set trigger_intensity to 0 here
         elif intensity > self.trigger_intensity and self.trigger_state == 1:
             # a greater trigger intensity has occured - override
             self.trigger_intensity = intensity
-            self.logger.debug("%s: override trigger on @ %s" % (self.name, intensity))
+            logger.debug("%s: override trigger on @ %s" % (self.name, intensity))
             self.intensity = 0  # reset light on trigger
             # reset the envelope
             self.adsr_envelope.state = 0
@@ -249,7 +251,7 @@ class LightGroup(LightElement):  # TODO why base light element, and not light el
             self.elements = list(e)
         self.intensity_overide = 0
         self.element_initialize = {}
-        self.logger = logging.getLogger("%s.%s.%s" % (__name__, "LightGroup", self.name))
+        # logger = logging.getLogger("%s.%s.%s" % (__name__, "LightGroup", self.name))
         self.trigger_state = 0  # TODO ie this could go away if this was subclassed differently
 
     # @@ problematic - problems with __init__ in base classes:
@@ -360,10 +362,11 @@ class Pulse(LightGroup):
                 self.center_position = max(self.moveto,
                         self.envelope.update(time_delta))
 
-            logger.debug("Centered @ %s" % self.center_position)
+            logger.info("%s Centered @ %s -> %s" % (self.name, self.center_position, self.end_pos))
             self.render()
             # pong mode:
             if self.center_position == self.end_pos:
+                logger.info("%s pong-end @ %s" % (self.name, self.end_pos))
                 self.moveto = self.start_pos
                 # lw = self.left_width
                 # self.left_width = self.right_width
@@ -397,7 +400,7 @@ class Pulse(LightGroup):
         self.trigger_intensity = intensity
         if intensity > 0 and self.trigger_state == 0:  # or note off message
             self.trigger_state = 1
-            self.logger.debug("%s: pulse trigger on @ %s" % (self.name, intensity))
+            logger.debug("%s: pulse trigger on @ %s" % (self.name, intensity))
         elif intensity == 0 and self.trigger_state:
                 self.trigger_state = 0
                 self.last_update = 0
@@ -406,7 +409,7 @@ class Pulse(LightGroup):
                     # ignore release in bell mode
                     # return
 
-                self.logger.debug("%s: pulse trigger off" % self.name)
+                logger.debug("%s: pulse trigger off" % self.name)
                 for e in self.elements:
                         # blackout
                         e.trigger(0)
@@ -559,7 +562,7 @@ class LightChase(LightGroup):
         self.element_initialize = {}
         self._pulse = deque()
         self.last_added_index = 0
-        self.logger = logging.getLogger("%s.%s.%s" % (__name__, "LightChase", self.name))
+        # self.logger = logging.getLogger("%s.%s.%s" % (__name__, "LightChase", self.name))
 
 
     def get_tween_mode_func(self, trigger_type="on"):
@@ -604,15 +607,15 @@ class LightChase(LightGroup):
         if not self.antialias:
             self.index = intindex
 
-        self.logger.debug("seq index %s" % self.index)
+        logger.debug("seq index %s" % self.index)
 
 
         if self.intensity:
             # this approach to pulse, will handle direction switches easily
             while intindex > self.last_added_index:
                 self.last_added_index += 1
-                self.logger.debug("self.last_added_index")
-                self.logger.debug(self.last_added_index)
+                logger.debug("self.last_added_index")
+                logger.debug(self.last_added_index)
                 index_element = self.elements[self.last_added_index - 1]
                 # if self._pulse[-1] != index_element:
                 self._pulse.append(index_element)
@@ -660,19 +663,19 @@ class LightChase(LightGroup):
             # @@ also need to test this against endpoint, not len, for chases that overshoot?
             # @@ all this end code should be tied to end of tween duration
             # or perhaps check if index_tween is complete
-            self.logger.debug("end reached")
+            logger.debug("end reached")
             if self.randomize:
                 random.shuffle(self.elements)
 
             if self.animation_mode == "loop":
                 # reset index
-                self.logger.debug('looping')
-                self.logger.debug(self.loop_delay)
-                self.logger.debug(self._delay_till)
+                logger.debug('looping')
+                logger.debug(self.loop_delay)
+                logger.debug(self._delay_till)
                 if self.loop_delay and (self._delay_till == 0):
                     self._delay_till = show.timecode + self.loop_delay
                     return
-                self.logger.debug("loop reset")
+                logger.debug("loop reset")
                 # messing with the tween complete value is a little bit hacky - but we know we
                 # can safely do this because we know that nothing will call tweener.update outside of the
                 # chase update funciton.
@@ -755,7 +758,7 @@ class LightChase(LightGroup):
                 # e.trigger(0) @@ not sure we really want to do this esp if plan is to support overlay more
                 # e.trigger(intensity)
         else:
-            self.logger.debug("chase trigger: OFF")
+            logger.debug("chase trigger: OFF")
             self.triggered_intensity = 0
             if self.off_trigger == "all" or self.width:
                 # a pulse width implies only a "all" off mode
