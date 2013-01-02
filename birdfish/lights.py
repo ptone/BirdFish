@@ -142,6 +142,7 @@ class LightElement(BaseLightElement):
     def trigger(self, intensity, **kwargs):
         # @@ need toggle mode implementation here
         if self.simple:
+            self.intensity = intensity
             return
         if intensity > 0 and self.trigger_state == 0:
             if self.bell_mode:
