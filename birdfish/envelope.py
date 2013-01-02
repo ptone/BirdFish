@@ -93,6 +93,9 @@ class EnvelopeSegment(object):
 
         # assert self.duration > 0  # only a duration > 0 makes sense
 
+    def __repr__(self):
+        return self.label
+
     def reset(self):
         self.elapsed = 0
         self.value = 0
@@ -139,6 +142,11 @@ class Envelope(EnvelopeSegment):
         self.loop = loop  # negative loop is infinite looping
         self._duration = 0
         self.reset()
+
+
+    @property
+    def current_segment(self):
+        return self.segments[self.index]
 
     def get_profile(self):
         logger.debug("Envelop %s profile property, index: %s" % (self.label, self.index))
@@ -200,7 +208,7 @@ class Envelope(EnvelopeSegment):
             # non looping or end of finite loop
             # just reurn last value until something resets index
             return self.value
-        segment = self.segments[self.index]
+        segment = self.current_segment
         if not segment.duration:
             # for example, no attack value
             # self.advance()
