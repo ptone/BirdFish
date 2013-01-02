@@ -95,13 +95,28 @@ class LightElement(BaseLightElement):
         self.last_update = current_time
         return time_delta
 
+    def bell_reset(self):
+        self.trigger_state = 0
+        self.last_update = 0
+        self.trigger_intensity = 0
+        self.intensity = 0
+        self.adsr_envelope.trigger(state=0)
+
     def update(self, show):
         if (self.simple or not (self.intensity or self.trigger_intensity)):
             # light is inactive or in sustain mode
             return self.intensity
         time_delta = self.get_time_delta(show.timecode)
         if time_delta < 0:
+            # negative means a delta hasn't yet be calculated
             return self.intensity
+
+        if self.bell_mode and self.adsr_envelope.segments[0].index == 2:
+            # bell mode ignores trigger off - simulate trigger off once
+            # sustain levels are reached
+            self.bell_reset()
+            return
+
         if self.adsr_envelope.advancing:
             intensity_scale = self.adsr_envelope.update(time_delta)
             self.set_intensity(self.trigger_intensity * intensity_scale)
@@ -129,6 +144,8 @@ class LightElement(BaseLightElement):
         if self.simple:
             return
         if intensity > 0 and self.trigger_state == 0:
+            if self.bell_mode:
+                self.bell_reset()
             self.trigger_state = 1
             self.trigger_intensity = intensity
             logger.debug("%s: trigger on @ %s" % (self.name, intensity))
