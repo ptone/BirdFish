@@ -160,7 +160,7 @@ class LightElement(BaseLightElement):
                 logger.debug("%s: trigger off" % self.name)
                 self.adsr_envelope.trigger(state=0)
                 # note can not set trigger_intensity to 0 here
-        elif intensity > self.trigger_intensity and self.trigger_state == 1:
+        elif intensity > self.intensity and self.trigger_state == 1:
             # a greater trigger intensity has occured - override
             self.trigger_intensity = intensity
             logger.debug("%s: override trigger on @ %s" % (self.name, intensity))
