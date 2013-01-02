@@ -81,6 +81,7 @@ class LightElement(BaseLightElement):
         # a simple element has values set externally and does not update
         self.simple = False
         self.trigger_state = 0
+        self.trigger_toggle = False
 
         # self.logger = logging.getLogger(
                 # "%s.%s.%s" % (__name__, "LightElement", self.name))
@@ -139,6 +140,15 @@ class LightElement(BaseLightElement):
         # mostly to be overridden by subclasses
         self.intensity = intensity
 
+    def _off_trigger(self):
+        self.trigger_state = 0
+        if self.bell_mode:
+            # ignore release in bell mode
+            return
+        logger.debug("%s: trigger off" % self.name)
+        self.adsr_envelope.trigger(state=0)
+        # note can not set trigger_intensity to 0 here
+
     def trigger(self, intensity, **kwargs):
         # @@ need toggle mode implementation here
         if self.simple:
@@ -152,14 +162,10 @@ class LightElement(BaseLightElement):
             logger.debug("%s: trigger on @ %s" % (self.name, intensity))
             self.intensity = 0  # reset light on trigger
             self.adsr_envelope.trigger(state=1)
-        elif intensity == 0 and self.trigger_state:
-                self.trigger_state = 0
-                if self.bell_mode:
-                    # ignore release in bell mode
-                    return
-                logger.debug("%s: trigger off" % self.name)
-                self.adsr_envelope.trigger(state=0)
-                # note can not set trigger_intensity to 0 here
+        elif intensity == 0 and self.trigger_state and not self.trigger_toggle:
+            self._off_trigger()
+        elif intensity and self.trigger_state and self.trigger_toggle:
+            self._off_trigger()
         elif intensity > self.intensity and self.trigger_state == 1:
             # a greater trigger intensity has occured - override
             self.trigger_intensity = intensity
@@ -380,7 +386,7 @@ class Pulse(LightGroup):
                 self.center_position = max(self.moveto,
                         self.envelope.update(time_delta))
 
-            logger.info("%s Centered @ %s -> %s" % (self.name, self.center_position, self.end_pos))
+            logger.debug("%s Centered @ %s -> %s" % (self.name, self.center_position, self.end_pos))
             self.render()
             # pong mode:
             if self.center_position == self.end_pos:
@@ -414,27 +420,35 @@ class Pulse(LightGroup):
                 # dim
                 e.trigger(int(255 * self.nodes[i - self.node_range[0]]))
 
+    def _off_trigger(self):
+        self.trigger_state = 0
+        self.last_update = 0
+        # if self.bell_mode:
+            # TODO does bell apply to pulse?
+            # ignore release in bell mode
+            # return
+
+        logger.debug("%s: pulse trigger off" % self.name)
+        for e in self.elements:
+                # blackout
+                e.trigger(0)
+        self.center_position = self.start_pos
+        self.trigger_intensity = 0
+        if self.moveto is not None:
+            self.moveto = self.end_pos  # TODO - should this be left at last set?
+            self.setup_move()
+
     def trigger(self, intensity, **kwargs):
-        self.trigger_intensity = intensity
         if intensity > 0 and self.trigger_state == 0:  # or note off message
             self.trigger_state = 1
+            self.trigger_intensity = intensity
             logger.debug("%s: pulse trigger on @ %s" % (self.name, intensity))
-        elif intensity == 0 and self.trigger_state:
-                self.trigger_state = 0
-                self.last_update = 0
-                # if self.bell_mode:
-                    # TODO does bell apply to pulse?
-                    # ignore release in bell mode
-                    # return
-
-                logger.debug("%s: pulse trigger off" % self.name)
-                for e in self.elements:
-                        # blackout
-                        e.trigger(0)
-                self.center_position = self.start_pos
-                if self.moveto is not None:
-                    self.moveto = self.end_pos  # TODO - should this be left at last set?
-                    self.setup_move()
+            print self.trigger_toggle
+        elif intensity == 0 and self.trigger_state and not self.trigger_toggle:
+            self._off_trigger()
+        elif intensity and self.trigger_state and self.trigger_toggle:
+            logger.info("%s: pulse trigger toggle off @ %s" % (self.name, intensity))
+            self._off_trigger()
 
 
 class EnvelopeElement(LightElement):
