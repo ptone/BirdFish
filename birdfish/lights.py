@@ -54,10 +54,12 @@ class BaseLightElement(object):
         with this light's channels
         """
         for channel, value in self.channels.items():
+            try:
+                # targeted optimization:
+                val = int(self.__dict__[value])
+            except AttributeError:
+                val = int(getattr(self, value))
 
-            # if channel == 2:
-            # print '%s, %s, %s' % (channel, value, int(getattr(self,value)))
-            val = int(getattr(self, value))
             data[channel - 1] = max(data[channel - 1], int(val))
 
             # no easy way to have more than one light on the same channel would

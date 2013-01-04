@@ -12,8 +12,7 @@ class LumosNetwork(BaseNetwork):
         # TODO this doesn't seem the most efficient
         # but the only way to get "brightest element wins"
         # rendering that I could come up with
-        for i in range(len(self.data)):
-            self.data[i] = 0
+        self.reset()
         self.update_data()
         self.client.send_data(self.data)
         # print self.data
