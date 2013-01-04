@@ -1,40 +1,27 @@
-import logging
 import tween
 from birdfish.log_setup import logger
 
 """
-Notes:
-Durations are in seconds
-tweener acts on an object and property
-tweener updates based on time since last update
+Implementation of envelopes
 
-core tween consists of  self.delta, tweenable.startValue, tweenable.change, self.duration
+An evelope is an object that is responsible for changing some value over time.
 
-One of the challenges extant is how to handle release if full attack has not
-been realized yet - duration should not be full duration, but portion remaining
-this involves reversing the tween algo to "solve for t" and ff to that time.
-could brute force using a time-delta at framerate resolution. - the solution this this
-http://en.wikipedia.org/wiki/Bisection_method
+Changes are divided into segments.
 
-Because the tweener acts on obj + property (via a bit of a hack) don't know
-if I should perhaps proxy the change here, or point tween directly to object
-The latter would be a stronger coupling.
+At the lowest level a segment consists of a EnvelopeProfile representing the
+parameters of teh change. The profile consists of:
+    Tweening curve function (easing curve)
+    start value
+    change in value
+    duration of change (in seconds)
 
-perhaps better to just always work with 0.0 - 1.0
+A profile can be used for one or more EnvelopeSegments. These segments manage
+the increment of time and store the value.
 
-a sustain can be considered a null tween with infinite duration - or basically a
-pause at the value at end of decay.
+An envelope consists of a group of segments, as each segment is completed, the
+next segment is run.
 
-a dumb envelope doesn't know anything about trigger ON/OFF
-
-Should have a way to propogate a single tweened value to many attributes
-that could be handled by LightGroup class
-
-an envelope should be an evelope segment - allowing nesting to create complex
-envelopes - think a warble on release. Envelope would have to be able to act like
-segment (? expose duration, update...)
-
-a pause segment could be represented as a segment with negative duration
+Envelopes can act as segments to other envelopes allowing for nested changes.
 
 """
 # TODO
@@ -45,13 +32,11 @@ a pause segment could be represented as a segment with negative duration
 
 class EnvelopeProfile(object):
     """
-    contains one phase or segment of a multi-segment envelope
-    attributes:
-    duration
-    shape
-    start value
-    end value
-    end value represented as delta/change
+    contains the math core for a segment
+
+    This is factored out from the segment so that one profile can be used
+    across multiple segments/envelopes - as envelope instances are ultimately
+    tied 1:1 with light elements.
     """
 
     def __init__(self, tween=tween.LINEAR, start=0, change=1.0, duration=1.0,
@@ -67,8 +52,7 @@ class EnvelopeProfile(object):
     def get_value(self, delta):
         if delta > self.duration:
             delta = self.duration
-        # TODO save a self.value here for more consistency with envelopes?
-        # print "updating %s %s at %s" % (self.label, self, delta)
+        # as this class just provides the math - it does not store a value
         return self.tween(delta, self.start, self.change, self.duration)
 
     def get_jump_time(self, value):
@@ -77,8 +61,9 @@ class EnvelopeProfile(object):
 
 class EnvelopeSegment(object):
     """
-    An ultimate end point in a nested envelope
-    contains reference to an envelope profile"""
+    represents a segment of value change - has a reference to a profile that
+    is used for calculations
+    """
     def __init__(self, tween=tween.LINEAR, start=0, change=1.0, duration=1.0,
             profile=None, label="segment"):
         if profile:
@@ -91,8 +76,6 @@ class EnvelopeSegment(object):
         self.elapsed = 0
         self.value = 0
 
-        # assert self.duration > 0  # only a duration > 0 makes sense
-
     def __repr__(self):
         return self.label
 
@@ -101,16 +84,21 @@ class EnvelopeSegment(object):
         self.value = 0
 
     def get_profile(self):
+        # provide a function that can be used on envelopes or segments to get
+        # current profile in effect
         return self.profile
 
     def update(self, delta):
-        # print "updating %s %s at delta %s" % (self.label, self, delta)
+        # show updates are based on a delta since last update
+        # while tweens are based on elapsed time
         self.elapsed += delta
         if not self.duration:
+            # no duration - instantly get last value
             self.value = self.profile.start + self.profile.change
         else:
             self.value = self.profile.get_value(self.elapsed)
         return self.value
+
 
 class StaticEnvelopeSegment(EnvelopeSegment):
     # just returns the start value unchanged - always
@@ -121,10 +109,13 @@ class StaticEnvelopeSegment(EnvelopeSegment):
         self.duration = 0
         # TODO - this is a hack so sustain doesn't get advanced over
         # as part of an on envelope that has no attack
+        # can't use a neg value as flag - as it will mess with duration math
         self.duration = 99999999999999999999999999999999
 
     def update(self, delta):
+        # always return the starting value
         return self.profile.start
+
 
 class Envelope(EnvelopeSegment):
 
@@ -143,7 +134,6 @@ class Envelope(EnvelopeSegment):
         self._duration = 0
         self.reset()
 
-
     @property
     def current_segment(self):
         return self.segments[self.index]
@@ -152,6 +142,9 @@ class Envelope(EnvelopeSegment):
         logger.debug("Envelop %s profile property, index: %s" % (self.label, self.index))
         if self.segments:
             return self.segments[self.index].profile
+        # TODO something is wrong with the logic here
+        # as this is not truely recursing, do segments need a get_profile
+        # and would a subclass ever have a profile attr on self?
         elif hasattr(self, 'profile'):
             return self.profile
         raise RuntimeError("profile not available")
@@ -191,7 +184,7 @@ class Envelope(EnvelopeSegment):
         else:
             # proceed through sequence of segments
             if self.segments[self.index]:
-                # TODO - this is a reason to have always have a segment of some sort
+                # TODO - this is a reason to always have a segment of some sort
                 # even if it is a null segment, rather than use none
                 self.segments[self.index].reset()
             self.index += 1
@@ -248,11 +241,11 @@ class Envelope(EnvelopeSegment):
         # a duration of 0 means it is infinite
         self._duration = 0
         for segment in self.segments:
+            # TODO need to decide if segment can be None, or is always a segment subclass
+            # otherwise could just
+            # self._duration = sum([segment.duration for segment in self.segments if segment.duration > 0])
             if segment and segment.duration:
                 self._duration += segment.duration
-            else:
-                self._duration = 0
-        # self._duration = sum([segment.duration for segment in self.segments if segment.duration > 0])
 
 
 class TriggeredEnvelope(Envelope):
@@ -272,6 +265,8 @@ class TriggeredEnvelope(Envelope):
         value of 0 is also implicit state=0
         """
         assert len(self.segments) == 2, "too many segments for a trigger envelope"
+        # TODO I think the whole value arg and associated code needs to go
+        # this is only about state
         if value == 0:
             state = 0
         if self.state != state:
@@ -287,9 +282,7 @@ class TriggeredEnvelope(Envelope):
                         ))
             else:
                 # off trigger
-                # print 'advance'
                 self.advance()
-                # print self.segments
                 logger.debug("current value: %s" % self.value)
                 logger.debug("current change for release: %s" % self.segments[1].get_profile().change)
                 if self.value < self.segments[1].get_profile().start:
@@ -327,23 +320,29 @@ class TriggeredEnvelope(Envelope):
 
 class ADSREnvelope(TriggeredEnvelope):
     """
-    4 segments ADSR - with S being infinite looping segment
+    4 segments ADSR - with S being static segment
     this is in a two segment triggered state as:
         on-segment envelope:
             attack
             decay
-            sustain - StaticEnvelopeSegment
+            sustain (StaticEnvelopeSegment)
         off:
             release
     """
-    def __init__(self, peak_value=1.0, sustain_value=0.8,
-            attack_shape=tween.LINEAR, attack_duration=0.5,
-            decay_shape=tween.LINEAR, decay_duration=.2,
-            release_shape=tween.LINEAR, release_duration=.5,
-            bell_mode=False, label='ADSR-envelope', **kwargs):
+    def __init__(self, 
+            peak_value=1.0,
+            sustain_value=0.8,
+            attack_shape=tween.LINEAR,
+            attack_duration=0.5,
+            decay_shape=tween.LINEAR,
+            decay_duration=.2,
+            release_shape=tween.LINEAR,
+            release_duration=.5,
+            bell_mode=False,
+            label='ADSR-envelope',
+            **kwargs):
 
         super(ADSREnvelope, self).__init__(loop=0, label=label)
-        # print attack_duration
         self.attack_envelope = EnvelopeSegment(
                 tween=attack_shape,
                 change=peak_value,
@@ -379,15 +378,5 @@ class ADSREnvelope(TriggeredEnvelope):
                 label="release",
                 )
         self.off_envelope = Envelope(label="off-envelope")
-        # if self.release_envelope.profile.change and self.release_envelope.duration:
         self.off_envelope.segments.append(self.release_envelope)
         self.segments = [self.on_envelope, self.off_envelope]
-
-    # def trigger(self, state=1, value=1.0):
-        # if trigger off during attack, skip decay
-
-class EnvelopeGenerator(object):
-    pass
-
-
-
