@@ -10,8 +10,7 @@ class BaseNetwork(object):
     def init_data(self):
         for l in self.elements:
             for c in l.channels:
-                # TODO max_chan is wrong here - is enforcement needed yet?
-                max_chan = max(self.max_chan, c)
+                max_chan = max(self.max_chan, c + 1)
         self.data.extend([0 for i in range(max_chan)])
 
     def blackout(self):
