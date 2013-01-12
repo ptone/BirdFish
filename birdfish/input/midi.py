@@ -130,7 +130,7 @@ class MidiDispatcher(threading.Thread):
             for recv,type in self.observers[message_key]:
                 if type[0].lower() == 't':
                    # trigger type
-                   vel = data = message.velocity * 2
+                   vel = data = message.velocity / 127.0
                    recv.trigger(vel, key=message_key)
                    if self.logger:
                        self.logger.log_event(recv,type,data)
@@ -148,11 +148,10 @@ class MidiDispatcher(threading.Thread):
                             if d:
                                 # print "data OK"
                                 # or data change
-                                # @@ note that attr map changed from 0-1 to 0-255
-                                setattr(lightobj,attributes[i], d * 2)
-                                # print "attribute %s set to %s" % (attributes[i], d/127.0)
+                                # generate a 0.0-1.0 value
+                                setattr(lightobj,attributes[i], d / 127.0)
                                 if self.logger:
-                                    self.logger.log_event(lightobj,type,d * 2, attr=attributes[i])
+                                    self.logger.log_event(lightobj,type,d / 127.0, attr=attributes[i])
         else:
             # @@ debug log undispatched signals
             print message

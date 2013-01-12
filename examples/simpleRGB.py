@@ -27,8 +27,8 @@ single = RGBLight(
         release_duration=0,
         sustain_value=0,
         )
-single.hue = random.random() * 255
-single.saturation = 255
+single.hue = random.random()
+single.saturation = 1
 single.update_rgb()
 single.bell_mode = True
 

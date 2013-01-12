@@ -40,8 +40,8 @@ class BaseLightElement(object):
         self.effects = []
         # signal intensity is the value set by the note on velocity -
         # does not reflect current brightness
-        self.trigger_intensity = 0
-        self.intensity = 0
+        self.trigger_intensity = 0.0
+        self.intensity = 0.0
         self.channels = {}
         self.last_updated = 0
         self.channels[start_channel] = 'intensity'
@@ -56,11 +56,15 @@ class BaseLightElement(object):
         for channel, value in self.channels.items():
             try:
                 # targeted optimization:
-                val = int(self.__dict__[value])
+                val = self.__dict__[value]
             except AttributeError:
-                val = int(getattr(self, value))
-
-            data[channel - 1] = max(data[channel - 1], int(val))
+                val = getattr(self, value)
+            # TODO current design flaw/limitation
+            # using byte arrays instead of float arrays for base
+            # data structure - means forcing to bytes here instead
+            # of output network level - practically this is OK as all
+            # networks are using 1 byte max per channel
+            data[channel - 1] = max(data[channel - 1], int(val * 256))
 
             # no easy way to have more than one light on the same channel would
             # need some way to track which objs have updated a slot - so that
@@ -74,7 +78,7 @@ class LightElement(BaseLightElement):
 
     def __init__(self, *args, **kwargs):
         super(LightElement, self).__init__(*args, **kwargs)
-        self.trigger_intensity = 0
+        self.trigger_intensity = 0.0
         self.universe = 1
         self.bell_mode = False
         self.last_update = 0
@@ -101,7 +105,7 @@ class LightElement(BaseLightElement):
     def bell_reset(self):
         self.trigger_state = 0
         self.last_update = 0
-        self.trigger_intensity = 0
+        self.trigger_intensity = 0.0
         self.intensity = 0
         self.adsr_envelope.trigger(state=0)
 
@@ -126,7 +130,7 @@ class LightElement(BaseLightElement):
         else:
             logger.debug(self.name)
             logger.debug('not advancing, intensity: {}'.format(self.intensity))
-            self.trigger_intensity = 0
+            self.trigger_intensity = 0.0
             self.intensity = max(0, self.intensity)
             logger.debug('not advancing, intensity: {}'.format(self.intensity))
             logger.debug('not advancing, trigger intensity: {}'.format(self.trigger_intensity))
@@ -162,7 +166,7 @@ class LightElement(BaseLightElement):
             self.trigger_state = 1
             self.trigger_intensity = intensity
             logger.debug("%s: trigger on @ %s" % (self.name, intensity))
-            self.intensity = 0  # reset light on trigger
+            self.intensity = 0.0  # reset light on trigger
             self.adsr_envelope.trigger(state=1)
         elif intensity == 0 and self.trigger_state and not self.trigger_toggle:
             self._off_trigger()
@@ -172,7 +176,7 @@ class LightElement(BaseLightElement):
             # a greater trigger intensity has occured - override
             self.trigger_intensity = intensity
             logger.debug("%s: override trigger on @ %s" % (self.name, intensity))
-            self.intensity = 0  # reset light on trigger
+            self.intensity = 0.0  # reset light on trigger
             # reset the envelope
             self.adsr_envelope.state = 0
             self.adsr_envelope.trigger(state=1)
@@ -181,13 +185,13 @@ class LightElement(BaseLightElement):
 
     def off(self):
         """convenience for off"""
-        self.trigger(0)
+        self.trigger(0.0)
 
 
 class RGBLight(LightElement):
-    RED = (255, 0, 0)
-    GREEEN = (0, 255, 0)
-    BLUE = (0, 0, 255)
+    RED = (1, 0, 0)
+    GREEEN = (0, 1, 0)
+    BLUE = (0, 0, 1)
 
     def __init__(self, *args, **kwargs):
         super(RGBLight, self).__init__(*args, **kwargs)
@@ -217,32 +221,28 @@ class RGBLight(LightElement):
     # @@ need to address the attribute of intensity in the context of RGB
     def update_hue(self):
         """updates hue property from RGB values, RGB is always updated when hue changed"""
-        adjusted_rgb = [(x / 255.0) * (self.intensity / 255.0) for x in [
+        adjusted_rgb = [x * self.intensity for x in [
             self.red, self.green, self.blue]]
         h, s, v = colorsys.rgb_to_hsv(*tuple(adjusted_rgb))
-        # hue and saturation stay as 0-1 values, not 0-255 since they are assumed to be not DMX
-        self._hue = h * 255
-        self._saturation = s * 255
-        # value = intensity - this will need to be overridden in RGB lights that use a 4th channel for intensity
-        # self.intensity = v * 255
+        self._hue = h
+        self._saturation = s
 
     def update_rgb(self):
-        hue = self._hue / 255.0
-        saturation = self._saturation / 255.0
+        hue = self._hue
+        saturation = self._saturation
         if 'intensity' in self.channels.values():
             # if the fixture has its own intensity slider - always calc RGB values at full intensity
             intensity = 1.0
         else:
-            intensity = self.intensity / 255.0
+            intensity = self.intensity
         # this funct takes all 0-1 values
         # print "intensity %s " % intensity
         r, g, b = colorsys.hsv_to_rgb(hue, saturation, intensity)
         # here intensity is assumed to be full, as HSV to RGB sets RGB values accordingly
         # print "result %s, %s, %s" % (r,g,b)
-        self.red = r * 255.0
-        self.green = g * 255.0
-        self.blue = b * 255.0
-        # self.intensity = 255
+        self.red = r
+        self.green = g
+        self.blue = b
 
     def _get_hue(self):
         # @@ need to update with function in case r,g,b were updated other than through hue
@@ -415,12 +415,11 @@ class Pulse(LightGroup):
             e.trigger(0)
             if i in self.node_range:
                 # print i
-                # TODO to 0-1 when 255 assumption factored out
                 # TODO problem here with a moving pulse:
                 #   how does the element handle multiple on triggers
                 # the trigger 0 is needed otherwise the leading edge just stays
                 # dim
-                e.trigger(int(255 * self.nodes[i - self.node_range[0]]))
+                e.trigger(self.nodes[i - self.node_range[0]])
 
     def _off_trigger(self):
         self.trigger_state = 0

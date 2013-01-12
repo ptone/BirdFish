@@ -14,5 +14,12 @@ class LumosNetwork(BaseNetwork):
         # rendering that I could come up with
         self.reset()
         self.update_data()
+
+        # format data values for DMX
+        # TODO see update_data on BaseLightElement
+        # the shift from float to 0-255 should happen here
+        # but bytearray is being used with updatedata - so convertion
+        # to byte has to happen earlier
+        # self.data = [int(x * 255) for x in self.data]
+
         self.client.send_data(self.data)
-        # print self.data
