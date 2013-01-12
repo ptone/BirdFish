@@ -502,7 +502,7 @@ would trigger on, trigger off elements - but in subclass could do things like co
 
 """
 
-class LightChase(LightGroup):
+class LightChaseOldVersion(LightGroup):
     """A chase of light Elements
 
     speed controls how fast the chase advances from start to finish min speed
