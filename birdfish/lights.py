@@ -64,7 +64,7 @@ class BaseLightElement(object):
             # data structure - means forcing to bytes here instead
             # of output network level - practically this is OK as all
             # networks are using 1 byte max per channel
-            data[channel - 1] = max(data[channel - 1], int(val * 256))
+            data[channel - 1] = max(data[channel - 1], int(val * 255))
 
             # no easy way to have more than one light on the same channel would
             # need some way to track which objs have updated a slot - so that
