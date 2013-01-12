@@ -5,12 +5,12 @@ class BaseNetwork(object):
     def __init__(self):
         self.elements = []
         self.data = array.array('B',())
-        self.max_chan = 0
 
     def init_data(self):
+        max_chan = 0
         for l in self.elements:
             for c in l.channels:
-                max_chan = max(self.max_chan, c + 1)
+                max_chan = max(max_chan, c + 1)
         self.data.extend([0 for i in range(max_chan)])
 
     def blackout(self):
