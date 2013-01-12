@@ -186,9 +186,10 @@ class MidiDispatcher(threading.Thread):
                 # print d
                 # put it into a pipe or queue
             count += 1
-            if not count % 10:
-                sys.stdout.write('.')
-                sys.stdout.flush()
+            # heartbeat prints dot
+            # if not count % 10:
+                # sys.stdout.write('.')
+                # sys.stdout.flush()
             self._stopevent.wait(.1)
         print "%s ends" % (self.getName(),)
 
