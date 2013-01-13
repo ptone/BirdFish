@@ -19,7 +19,13 @@ show.networks.append(dmx3)
 dispatcher = MidiDispatcher("MidiKeys")
 
 
-p = Pulse(name="greenpulse")
+p = Pulse(name="greenpulse",
+        start_pos=12,
+        end_pos=65,
+        speed=3,
+        move_tween=tween.IN_OUT_CUBIC,
+        )
+
 elementid = 0
 for i in range(1,360,3):
     elementid += 1

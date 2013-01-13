@@ -309,17 +309,19 @@ class Chase(LightGroup):
         self.moveto = None
         self.current_moveto = None
         self.speed_mode = 'duration' # or 'speed' of units per second
-        self.speed = 1
+        self.speed = kwargs.get('speed', 1)
         self.move_envelope = None
-        self.start_pos = 0
-        self.end_pos = 10
+        self.move_tween = kwargs.get('move_tween', tween.LINEAR)
+        self.start_pos = kwargs.get('start_pos', 0)
+        self.end_pos = kwargs.get('end_pos', 10)
+        self.moveto = self.end_pos
         self.last_center = None
 
     def _off_trigger(self):
         self.trigger_state = 0
         self.last_update = 0
         # if self.bell_mode:
-            # TODO does bell apply to pulse?
+            # TODO does bell apply to chase classes?
             # ignore release in bell mode
             # return
 
@@ -327,7 +329,6 @@ class Chase(LightGroup):
         for e in self.elements:
                 # blackout
                 e.trigger(0)
-        self.center_position = self.start_pos
         self.center_position = self.last_center = self.start_pos
         self.trigger_intensity = 0
         if self.moveto is not None:
@@ -335,6 +336,7 @@ class Chase(LightGroup):
             self.setup_move()
 
     def trigger(self, intensity, **kwargs):
+        self.setup_move()
         if intensity > 0 and self.trigger_state == 0:  # or note off message
             self.trigger_state = 1
             self.trigger_intensity = intensity
@@ -346,8 +348,11 @@ class Chase(LightGroup):
             self._off_trigger()
 
     def setup_move(self):
+        # TODO need to differentiate between first move - and subsequent moves
         if not self.move_envelope:
-            self.move_envelope = EnvelopeSegment(tween=tween.LINEAR)
+            # TODO the tween type needs to be a settable attr on self
+            self.move_envelope = EnvelopeSegment(tween=self.move_tween)
+            self.center_position = self.start_pos
         self.move_envelope.profile.change = self.moveto - self.center_position
         self.move_envelope.profile.start = self.center_position
         if self.speed_mode == 'duration':
@@ -382,6 +387,7 @@ class Chase(LightGroup):
         self.render()
 
     def render(self):
+        # TODO needs to handle reverse situations better
         if self.last_center is None:
             self.last_center = self.start_pos
         current_center = int(self.center_position)
@@ -402,6 +408,8 @@ class Pulse(Chase):
     """
     def __init__(self,
             # group=None,
+            # TODO call super and add pulse specific kwargs extraction
+            # TODO once the kwargs settle down - make them explicit
             left_width=3,
             left_shape=tween.LINEAR,
             right_width=3,
