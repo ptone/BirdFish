@@ -328,6 +328,7 @@ class Chase(LightGroup):
                 # blackout
                 e.trigger(0)
         self.center_position = self.start_pos
+        self.center_position = self.last_center = self.start_pos
         self.trigger_intensity = 0
         if self.moveto is not None:
             self.moveto = self.end_pos  # TODO - should this be left at last set?
