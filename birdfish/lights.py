@@ -103,6 +103,7 @@ class LightElement(BaseLightElement):
         return time_delta
 
     def bell_reset(self):
+        # TODO so why not just trigger 0 here?
         self.trigger_state = 0
         self.last_update = 0
         self.trigger_intensity = 0.0
@@ -117,7 +118,6 @@ class LightElement(BaseLightElement):
         if time_delta < 0:
             # negative means a delta hasn't yet be calculated
             return self.intensity
-
         if self.bell_mode and self.adsr_envelope.segments[0].index == 2:
             # bell mode ignores trigger off - simulate trigger off once
             # sustain levels are reached
@@ -297,7 +297,99 @@ class LightGroup(LightElement):  # TODO why base light element, and not light el
         for l in self.elements:
             l.trigger(intensity)
 
-class Pulse(LightGroup):
+
+class Chase(LightGroup):
+    def __init__(self,
+            # group=None,
+            **kwargs):
+
+        super(Chase, self).__init__(**kwargs)
+        # self.group = group
+        self.center_position = 0
+        self.moveto = None
+        self.current_moveto = None
+        self.speed_mode = 'duration' # or 'speed' of units per second
+        self.speed = 1
+        self.move_envelope = None
+        self.start_pos = 0
+        self.end_pos = 10
+        self.last_center = None
+
+    def _off_trigger(self):
+        self.trigger_state = 0
+        self.last_update = 0
+        # if self.bell_mode:
+            # TODO does bell apply to pulse?
+            # ignore release in bell mode
+            # return
+
+        logger.debug("%s: pulse trigger off" % self.name)
+        for e in self.elements:
+                # blackout
+                e.trigger(0)
+        self.center_position = self.start_pos
+        self.trigger_intensity = 0
+        if self.moveto is not None:
+            self.moveto = self.end_pos  # TODO - should this be left at last set?
+            self.setup_move()
+
+    def trigger(self, intensity, **kwargs):
+        if intensity > 0 and self.trigger_state == 0:  # or note off message
+            self.trigger_state = 1
+            self.trigger_intensity = intensity
+            logger.debug("%s: chase trigger on @ %s" % (self.name, intensity))
+        elif intensity == 0 and self.trigger_state and not self.trigger_toggle:
+            self._off_trigger()
+        elif intensity and self.trigger_state and self.trigger_toggle:
+            logger.info("%s: chase trigger toggle off @ %s" % (self.name, intensity))
+            self._off_trigger()
+
+    def setup_move(self):
+        if not self.move_envelope:
+            self.move_envelope = EnvelopeSegment(tween=tween.LINEAR)
+        self.move_envelope.profile.change = self.moveto - self.center_position
+        self.move_envelope.profile.start = self.center_position
+        if self.speed_mode == 'duration':
+            self.move_envelope.profile.duration = self.speed
+        elif self.speed_mode == 'speed':
+            self.move_envelope.profile.duration = (
+                    # ie moving 9 spaces, at 3 spaces per sec = 3 sec
+                    self.move_envelope.profile.change / self.speed)
+        self.move_envelope.reset()
+        self.current_moveto = self.moveto
+
+    def update_position(self, show):
+        if self.current_moveto != self.moveto:
+            self.setup_move()
+        if self.moveto is not None and (self.center_position != self.current_moveto):
+            time_delta = self.get_time_delta(show.timecode)
+            if time_delta < 0:
+                return
+            # this min max business is because the tween algos will overshoot
+            if self.moveto > self.center_position:
+                self.center_position = min(self.moveto,
+                        self.move_envelope.update(time_delta))
+            else:
+                self.center_position = max(self.moveto,
+                        self.move_envelope.update(time_delta))
+
+
+    def update(self, show):
+        if not self.trigger_intensity:
+            return
+        self.update_position(show)
+        self.render()
+
+    def render(self):
+        if self.last_center is None:
+            self.last_center = self.start_pos
+        current_center = int(self.center_position)
+        [e.trigger(self.trigger_intensity) for e in self.elements[self.last_center:current_center]]
+        # self.elements[int(self.center_position)].trigger(self.trigger_intensity)
+        self.last_center = current_center
+
+
+class Pulse(Chase):
     """
     a cylon like moving pulse
 
@@ -317,36 +409,12 @@ class Pulse(LightGroup):
 
         super(Pulse, self).__init__(**kwargs)
         # self.group = group
-        self.center_position = 0
-        self.moveto = None
-        self.current_moveto = None
-        self.speed_mode = 'duration' # or 'speed' of units per second
-        self.speed = 1
-        self.envelope = None
-        self.start_pos = 0
-        self.end_pos = 10
         self.left_width = left_width
         self.left_shape = left_shape
         self.right_width = right_width
         self.right_shape = right_shape
         self.nodes = []  # a list of element values for pulse
         self.node_range = []  # index range of current pulse
-
-    def setup_move(self):
-        if not self.envelope:
-            self.envelope = EnvelopeSegment(tween=tween.IN_OUT_CUBIC)
-        self.envelope.profile.change = self.moveto - self.center_position
-        self.envelope.profile.start = self.center_position
-        if self.speed_mode == 'duration':
-            self.envelope.profile.duration = self.speed
-        elif self.speed_mode == 'speed':
-            self.envelope.profile.duration = (
-                    # ie moving 9 spaces, at 3 spaces per sec = 3 sec
-                    self.envelope.profile.change / self.speed)
-        self.envelope.reset()
-        self.current_moveto = self.moveto
-
-
 
     def set_current_nodes(self):
         node_offset = self.center_position % 1
@@ -372,36 +440,20 @@ class Pulse(LightGroup):
         logger.debug(self.nodes)
 
     def update(self, show):
-        if not self.trigger_intensity:
-            return
-        if self.current_moveto != self.moveto:
-            self.setup_move()
-        if self.moveto is not None and (self.center_position != self.current_moveto):
-            time_delta = self.get_time_delta(show.timecode)
-            if time_delta < 0:
-                return
-            # this min max business is because the tween algos will overshoot
-            if self.moveto > self.center_position:
-                self.center_position = min(self.moveto,
-                        self.envelope.update(time_delta))
-            else:
-                self.center_position = max(self.moveto,
-                        self.envelope.update(time_delta))
-
-            logger.debug("%s Centered @ %s -> %s" % (self.name, self.center_position, self.end_pos))
-            self.render()
-            # pong mode:
-            if self.center_position == self.end_pos:
-                logger.info("%s pong-end @ %s" % (self.name, self.end_pos))
-                self.moveto = self.start_pos
-                # lw = self.left_width
-                # self.left_width = self.right_width
-                # self.right_width = lw
-            if self.center_position == self.start_pos:
-                self.moveto = self.end_pos
-                # rw = self.right_width
-                # self.right_width = self.left_width
-                # self.left_width = rw
+        super(Pulse, self).update(show)
+        logger.debug("%s Centered @ %s -> %s" % (self.name, self.center_position, self.end_pos))
+        # pong mode:
+        if self.center_position == self.end_pos:
+            logger.info("%s pong-end @ %s" % (self.name, self.end_pos))
+            self.moveto = self.start_pos
+            # lw = self.left_width
+            # self.left_width = self.right_width
+            # self.right_width = lw
+        if self.center_position == self.start_pos:
+            self.moveto = self.end_pos
+            # rw = self.right_width
+            # self.right_width = self.left_width
+            # self.left_width = rw
 
 
     def render(self):
@@ -421,35 +473,6 @@ class Pulse(LightGroup):
                 # dim
                 e.trigger(self.nodes[i - self.node_range[0]])
 
-    def _off_trigger(self):
-        self.trigger_state = 0
-        self.last_update = 0
-        # if self.bell_mode:
-            # TODO does bell apply to pulse?
-            # ignore release in bell mode
-            # return
-
-        logger.debug("%s: pulse trigger off" % self.name)
-        for e in self.elements:
-                # blackout
-                e.trigger(0)
-        self.center_position = self.start_pos
-        self.trigger_intensity = 0
-        if self.moveto is not None:
-            self.moveto = self.end_pos  # TODO - should this be left at last set?
-            self.setup_move()
-
-    def trigger(self, intensity, **kwargs):
-        if intensity > 0 and self.trigger_state == 0:  # or note off message
-            self.trigger_state = 1
-            self.trigger_intensity = intensity
-            logger.debug("%s: pulse trigger on @ %s" % (self.name, intensity))
-            print self.trigger_toggle
-        elif intensity == 0 and self.trigger_state and not self.trigger_toggle:
-            self._off_trigger()
-        elif intensity and self.trigger_state and self.trigger_toggle:
-            logger.info("%s: pulse trigger toggle off @ %s" % (self.name, intensity))
-            self._off_trigger()
 
 
 class EnvelopeElement(LightElement):
