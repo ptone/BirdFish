@@ -73,8 +73,17 @@ class BaseLightElement(object):
             # = max (dmx_val,dmx[channel-1]) #zero index adjust??
             # currently this brightest wins is done by zero out the data
 
-class LightElement(BaseLightElement):
+    def get_time_delta(self, current_time):
+        if not self.last_update:
+            # can't set this from trigger - since don't have access to show
+            self.last_update = current_time
+            # returning -1 signals that no delta is yet available
+            return -1
+        time_delta = current_time - self.last_update
+        self.last_update = current_time
+        return time_delta
 
+class LightElement(BaseLightElement):
 
     def __init__(self, *args, **kwargs):
         super(LightElement, self).__init__(*args, **kwargs)
@@ -91,16 +100,6 @@ class LightElement(BaseLightElement):
 
         # self.logger = logging.getLogger(
                 # "%s.%s.%s" % (__name__, "LightElement", self.name))
-
-    def get_time_delta(self, current_time):
-        if not self.last_update:
-            # can't set this from trigger - since don't have access to show
-            self.last_update = current_time
-            # returning -1 signals that no delta is yet available
-            return -1
-        time_delta = current_time - self.last_update
-        self.last_update = current_time
-        return time_delta
 
     def bell_reset(self):
         # TODO so why not just trigger 0 here?
