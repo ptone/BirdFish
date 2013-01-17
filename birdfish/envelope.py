@@ -172,12 +172,13 @@ class Envelope(EnvelopeSegment):
     def advance(self):
         # return True if advanced
         if self.index + 1 == len(self.segments):  # last segment
-            if self.loop and self.loop_counter:
+            if self.loop:
                 self.segments[self.index].reset()
                 self.index = 0
-                if self.loop > 0:  # this is a finite loop
+                self.current_segment_time_delta = 0
+                if self.loop_counter and self.loop > 0:  # this is a finite loop
                     self.loop_counter -= 1
-                    return True
+                return True
             else:
                 # non-looping, or done with final loop
                 pass
@@ -220,6 +221,7 @@ class Envelope(EnvelopeSegment):
         if (self.current_segment_time_delta > segment.duration and
                 not isinstance(segment, StaticEnvelopeSegment)):
             overage = self.current_segment_time_delta - segment.duration
+            logger.debug("overage: %s" % overage)
             # TODO currently don't handle case where overage > new segment
             # duration - could need recursion
 
@@ -227,6 +229,8 @@ class Envelope(EnvelopeSegment):
                 logger.debug('advanced, new delta: %s' % overage)
                 delta = self.current_segment_time_delta = overage
                 segment = self.segments[self.index]
+            else:
+                logger.debug("did not advance after overage")
 
         self.value = segment.update(delta)
         return self.value
