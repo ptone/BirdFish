@@ -9,6 +9,7 @@ change some attribute over time - generally using envelopes
 
 from birdfish.envelope import Envelope, EnvelopeSegment, StaticEnvelopeSegment
 from birdfish.lights import BaseLightElement
+from birdfish import tween
 
 # TODO There should probably be a base element - then BaseData or BaseLight element
 
@@ -16,12 +17,12 @@ from birdfish.lights import BaseLightElement
 class BaseEffect(BaseLightElement):
     def __init__(self, *args, **kwargs):
         super(BaseEffect, self).__init__(*args, **kwargs)
+        self.targets = kwargs.get('targets', [])
 
 class Blink(BaseEffect):
 
-    def __init__(self, targets=[], frequency=2):
-        super(Blink, self).__init__()
-        self.targets = targets
+    def __init__(self, frequency=2, **kwargs):
+        super(Blink, self).__init__(**kwargs)
         self.period_duration = 1.0/(2 * frequency)
         self.blinkon = True
         self.last_changed = None
@@ -44,16 +45,17 @@ class Blink(BaseEffect):
 
 
 
-class Pulse(BaseEffect):
+class Pulser(BaseEffect):
 
-    def __init__(self, frequency=2):
-        # TODO This was a start at blink
-        # using an envelope for this is fully overkill
-        # but started here and thinking through it
-        # leaving as start of pulse effect
+    # TODO need to implement trigger here - otherwise effects will run
+    # "in the background" all the time,and may not be synced to
+    # elements as desired.
+    #
+    def __init__(self, frequency=1, shape=tween.LINEAR, **kwargs):
+        super(Pulser, self).__init__(**kwargs)
         period_duration = 1.0/(2 * frequency)
-        on_flash = StaticEnvelopeSegment(start=1, change=0, duration=period_duration)
-        off_flash = StaticEnvelopeSegment(start=0, change=0, duration=period_duration)
+        on_flash = EnvelopeSegment(start=0, change=1, tween=shape, duration=period_duration)
+        off_flash = EnvelopeSegment(start=1, change=-1, tween=shape, duration=period_duration)
         self.envelope = Envelope(loop=-1)
         self.envelope.segments = [on_flash, off_flash]
 
@@ -62,5 +64,9 @@ class Pulse(BaseEffect):
         if time_delta < 0:
             # negative means a delta hasn't yet be calculated
             return
+        val = self.envelope.update(time_delta)
+        # print val
+        for target in self.targets:
+            target.set_intensity(val * target.intensity)
 
 
