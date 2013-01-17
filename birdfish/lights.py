@@ -43,7 +43,11 @@ class BaseLightElement(object):
         self.trigger_intensity = 0.0
         self.intensity = 0.0
         self.channels = {}
+
+        # TODO are these both needed?
         self.last_updated = 0
+        self.last_update = 0
+
         self.channels[start_channel] = 'intensity'
         # TODO should an element have it's own framerate??
         self.frame_rate = 40
@@ -90,7 +94,6 @@ class LightElement(BaseLightElement):
         self.trigger_intensity = 0.0
         self.universe = 1
         self.bell_mode = False
-        self.last_update = 0
         self.name = kwargs.get("name", "unnamed_LightElement")
         self.adsr_envelope = ADSREnvelope(**kwargs)
         # a simple element has values set externally and does not update
