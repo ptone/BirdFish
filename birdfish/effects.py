@@ -8,7 +8,7 @@ change some attribute over time - generally using envelopes
 """
 
 from birdfish.envelope import Envelope, EnvelopeSegment, StaticEnvelopeSegment
-from birdfish.lights import BaseLightElement
+from birdfish.lights import BaseLightElement, LightElement
 from birdfish import tween
 
 # TODO There should probably be a base element - then BaseData or BaseLight element
@@ -51,22 +51,37 @@ class Pulser(BaseEffect):
     # "in the background" all the time,and may not be synced to
     # elements as desired.
     #
-    def __init__(self, frequency=1, shape=tween.LINEAR, **kwargs):
+    def __init__(self, frequency=1, on_shape=tween.LINEAR, off_shape=tween.LINEAR, triggered=True, **kwargs):
         super(Pulser, self).__init__(**kwargs)
         period_duration = 1.0/(2 * frequency)
-        on_flash = EnvelopeSegment(start=0, change=1, tween=shape, duration=period_duration)
-        off_flash = EnvelopeSegment(start=1, change=-1, tween=shape, duration=period_duration)
+        on_flash = EnvelopeSegment(start=0, change=1, tween=on_shape, duration=period_duration)
+        off_flash = EnvelopeSegment(start=1, change=-1, tween=off_shape, duration=period_duration)
         self.envelope = Envelope(loop=-1)
         self.envelope.segments = [on_flash, off_flash]
+        if triggered:
+            self.trigger_state = 0
+        else:
+            self.trigger_state = 1
 
-    def update(self, show):
-        time_delta = self.get_time_delta(show.timecode)
-        if time_delta < 0:
-            # negative means a delta hasn't yet be calculated
-            return
-        val = self.envelope.update(time_delta)
-        # print val
-        for target in self.targets:
-            target.set_intensity(val * target.intensity)
+    def update(self, show, targets=None):
+        if not targets:
+            targets = self.targets
+        elif isinstance(targets, LightElement):
+            targets = [targets]
 
+        if self.trigger_state:
+            time_delta = self.get_time_delta(show.timecode)
+            if time_delta < 0:
+                # negative means a delta hasn't yet be calculated
+                return
+            val = self.envelope.update(time_delta)
+            # print val
+            for target in targets:
+                target.set_intensity(val * target.intensity)
+
+    def trigger(self, intensity, **kwargs):
+        if intensity:
+            self.trigger_state = 1
+        else:
+            self.trigger_state = 0
 
