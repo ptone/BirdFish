@@ -38,12 +38,6 @@ class Blink(BaseEffect):
         self.blinkon = True
         self.last_changed = None
 
-    def update_targets(self):
-        if not self.blinkon:
-            # we only modify intensity when off
-            for target in self.targets:
-                target.set_intensity(0)
-
     def update(self, show):
         if not self.last_changed:
             self.last_changed = show.timecode
@@ -51,7 +45,10 @@ class Blink(BaseEffect):
         if show.timecode - self.last_changed > self.period_duration:
             self.blinkon = not self.blinkon
             self.last_changed = show.timecode
-        self.update_targets()
+        if not self.blinkon:
+            # we only modify intensity when off
+            for target in self.targets:
+                target.set_intensity(0)
 
 class Pulser(BaseEffect):
 
