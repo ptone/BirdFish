@@ -15,9 +15,20 @@ from birdfish import tween
 
 
 class BaseEffect(BaseLightElement):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, triggered=True, *args, **kwargs):
         super(BaseEffect, self).__init__(*args, **kwargs)
         self.targets = kwargs.get('targets', [])
+        if triggered:
+            self.trigger_state = 0
+        else:
+            self.trigger_state = 1
+
+    def trigger(self, intensity, **kwargs):
+        if intensity:
+            self.trigger_state = 1
+        else:
+            self.trigger_state = 0
+
 
 class Blink(BaseEffect):
 
@@ -40,10 +51,7 @@ class Blink(BaseEffect):
         if show.timecode - self.last_changed > self.period_duration:
             self.blinkon = not self.blinkon
             self.last_changed = show.timecode
-
         self.update_targets()
-
-
 
 class Pulser(BaseEffect):
 
@@ -58,10 +66,6 @@ class Pulser(BaseEffect):
         off_flash = EnvelopeSegment(start=1, change=-1, tween=off_shape, duration=period_duration)
         self.envelope = Envelope(loop=-1)
         self.envelope.segments = [on_flash, off_flash]
-        if triggered:
-            self.trigger_state = 0
-        else:
-            self.trigger_state = 1
 
     def update(self, show, targets=None):
         if not targets:
@@ -79,9 +83,4 @@ class Pulser(BaseEffect):
             for target in targets:
                 target.set_intensity(val * target.intensity)
 
-    def trigger(self, intensity, **kwargs):
-        if intensity:
-            self.trigger_state = 1
-        else:
-            self.trigger_state = 0
 
