@@ -90,6 +90,8 @@ class LightElement(BaseLightElement):
         self.simple = False
         self.trigger_state = 0
         self.trigger_toggle = False
+        self.effects = []
+        self.pre_update_effects = []
 
         # self.logger = logging.getLogger(
                 # "%s.%s.%s" % (__name__, "LightElement", self.name))
@@ -127,11 +129,15 @@ class LightElement(BaseLightElement):
             logger.debug('not advancing, intensity: {}'.format(self.intensity))
             logger.debug('not advancing, trigger intensity: {}'.format(self.trigger_intensity))
             self.last_update = 0
+            # only turn off effects here so they can continue to effect releases
+            [x.trigger(0) for x in self.effects]
 
         # moved dmx update to show update, to accomodate effects
         # self.dmx_update(show.universes[self.universe].dmx)
         # if self.last_used_intensity != self.intensity:
         #     print int(self.intensity)
+        for effect in self.effects:
+            effect.update(show, [self])
         return self.intensity
 
     def set_intensity(self, intensity):
@@ -156,6 +162,7 @@ class LightElement(BaseLightElement):
             if self.bell_mode:
                 self.bell_reset()
             self.trigger_state = 1
+            [x.trigger(intensity) for x in self.effects]
             self.trigger_intensity = intensity
             logger.debug("%s: trigger on @ %s" % (self.name, intensity))
             self.intensity = 0.0  # reset light on trigger

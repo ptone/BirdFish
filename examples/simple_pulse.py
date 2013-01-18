@@ -1,5 +1,6 @@
 import sys
 
+from birdfish import tween
 from birdfish.effects import Pulser
 from birdfish.input.midi import MidiDispatcher
 from birdfish.lights import LightElement, LightShow
@@ -31,19 +32,19 @@ single = LightElement(
 # add the light to a network
 dmx3.add_element(single)
 
-# a blinker is configured by how many times it should blink per second
-# 2 is the default
+# the effect is configured by how many times it should pulse per second
+# 1 is the default
 pulser = Pulser()
 
-# we tell the blinker what elements it should effect
-pulser.targets.append(single)
+# if you wanted to give the pulse a different characteristic
+# pulser = Pulser(on_shape=tween.IN_CIRC, off_shape=tween.OUT_CIRC)
 
-# we add the blinker to the shows effects
-show.effects.append(pulser)
+# we append the effect to the elements own list of effects
+single.effects.append(pulser)
 
 # set the input interface to trigger the element
 # midi code 41 is the "Q" key on the qwerty keyboard for the midikeys app
-dispatcher.add_observer((0,41),single)
+dispatcher.add_observer((0,41), single)
 
 # startup the midi communication - runs in its own thread
 dispatcher.start()
