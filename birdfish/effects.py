@@ -15,9 +15,11 @@ from birdfish import tween
 
 
 class BaseEffect(BaseLightElement):
-    def __init__(self, triggered=True, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(BaseEffect, self).__init__(*args, **kwargs)
         self.targets = kwargs.get('targets', [])
+        # TODO shoud triggered default be T or F?
+        triggered = kwargs.get('triggered', True)
         if triggered:
             self.trigger_state = 0
         else:
@@ -56,7 +58,7 @@ class Pulser(BaseEffect):
     # "in the background" all the time,and may not be synced to
     # elements as desired.
     #
-    def __init__(self, frequency=1, on_shape=tween.LINEAR, off_shape=tween.LINEAR, triggered=True, **kwargs):
+    def __init__(self, frequency=1, on_shape=tween.LINEAR, off_shape=tween.LINEAR, **kwargs):
         super(Pulser, self).__init__(**kwargs)
         period_duration = 1.0/(2 * frequency)
         on_flash = EnvelopeSegment(start=0, change=1, tween=on_shape, duration=period_duration)
@@ -69,14 +71,12 @@ class Pulser(BaseEffect):
             targets = self.targets
         elif isinstance(targets, LightElement):
             targets = [targets]
-
         if self.trigger_state:
             time_delta = self.get_time_delta(show.timecode)
             if time_delta < 0:
                 # negative means a delta hasn't yet be calculated
                 return
             val = self.envelope.update(time_delta)
-            # print val
             for target in targets:
                 target.set_intensity(val * target.intensity)
 

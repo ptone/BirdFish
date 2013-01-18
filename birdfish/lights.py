@@ -29,7 +29,6 @@ class BaseLightElement(object):
 
     def __init__(self, start_channel=1, *args, **kwargs):
         self.name = kwargs.get('name', "baselight")
-        self.effects = []
         # signal intensity is the value set by the note on velocity -
         # does not reflect current brightness
         self.trigger_intensity = 0.0
@@ -275,7 +274,7 @@ class LightGroup(LightElement):  # TODO why base light element, and not light el
             # make a copy of the values
             self.elements = list(e)
         self.intensity_overide = 0
-        self.element_initialize = {}
+        self.intensity = 1.0
         # logger = logging.getLogger("%s.%s.%s" % (__name__, "LightGroup", self.name))
         self.trigger_state = 0  # TODO ie this could go away if this was subclassed differently
 
@@ -295,6 +294,10 @@ class LightGroup(LightElement):  # TODO why base light element, and not light el
             intensity = 0
         for l in self.elements:
             l.trigger(intensity)
+
+    def set_intensity(self, intensity):
+        # the group element always has a pseudo-intensity of 1
+        [e.set_intensity(e.intensity * intensity) for e in self.elements]
 
 
 class Chase(LightGroup):
@@ -384,6 +387,8 @@ class Chase(LightGroup):
             return
         self.update_position(show)
         self.render()
+        for effect in self.effects:
+            effect.update(show, [self])
 
     def render(self):
         # TODO needs to handle reverse situations better
