@@ -99,6 +99,10 @@ class EnvelopeSegment(object):
             self.value = self.profile.get_value(self.elapsed)
         return self.value
 
+    @property
+    def completed(self):
+        return self.elapsed >= self.duration
+
 
 class StaticEnvelopeSegment(EnvelopeSegment):
     # just returns the start value unchanged - always

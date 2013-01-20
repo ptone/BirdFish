@@ -71,10 +71,10 @@ class BaseLightElement(object):
             # can't set this from trigger - since don't have access to show
             self.last_update = current_time
             # returning -1 signals that no delta is yet available
-            return -1
-        time_delta = current_time - self.last_update
+            self.time_delta = -1
+        self.time_delta = current_time - self.last_update
         self.last_update = current_time
-        return time_delta
+        return self.time_delta
 
 class LightElement(BaseLightElement):
 
@@ -324,9 +324,13 @@ class Chase(LightGroup):
         self.end_pos = kwargs.get('end_pos', 10)
         self.moveto = self.end_pos
         self.last_center = None
+        self.moving = False
+        # off mode may be all, follow, reverse
+        self.off_mode = "all"
 
     def _off_trigger(self):
         self.trigger_state = 0
+        self.trigger_intensity = 0
         self.last_update = 0
         # if self.bell_mode:
             # TODO does bell apply to chase classes?
@@ -334,21 +338,32 @@ class Chase(LightGroup):
             # return
 
         logger.debug("%s: pulse trigger off" % self.name)
-        for e in self.elements:
-                # blackout
-                e.trigger(0)
-        self.center_position = self.last_center = self.start_pos
-        self.trigger_intensity = 0
-        if self.moveto is not None:
-            self.moveto = self.end_pos  # TODO - should this be left at last set?
-            self.setup_move()
+        self.reset_positions()
+        self.setup_move()
+
+        if self.off_mode == "all":
+            self.moving = False
+            for e in self.elements:
+                    # blackout
+                    e.trigger(0)
+        elif self.off_mode == "follow":
+            # reset the chase to follow itself as trigger off
+            # TODO - placeholder, not sure anything needs to be done
+            self.moving = True
 
     def trigger(self, intensity, **kwargs):
-        self.setup_move()
         if intensity > 0 and self.trigger_state == 0:  # or note off message
+            if self.moving:
+                # we are already in either in an active on or off chase
+                # TODO - do we reset everything - draw on top...?
+                print "Already moving"
+                return
+            self.setup_move()
             self.trigger_state = 1
             self.trigger_intensity = intensity
+            self.center_position = self.last_center = self.start_pos
             logger.debug("%s: chase trigger on @ %s" % (self.name, intensity))
+            self.moving = True
         elif intensity == 0 and self.trigger_state and not self.trigger_toggle:
             self._off_trigger()
         elif intensity and self.trigger_state and self.trigger_toggle:
@@ -356,11 +371,15 @@ class Chase(LightGroup):
             self._off_trigger()
 
     def setup_move(self):
+        """
+        Sets up the move envelope from the current position
+        """
         # TODO need to differentiate between first move - and subsequent moves
         if not self.move_envelope:
             # TODO the tween type needs to be a settable attr on self
             self.move_envelope = EnvelopeSegment(tween=self.move_tween)
-            self.center_position = self.start_pos
+            self.last_center = self.center_position = self.start_pos
+
         self.move_envelope.profile.change = self.moveto - self.center_position
         self.move_envelope.profile.start = self.center_position
         if self.speed_mode == 'duration':
@@ -372,26 +391,49 @@ class Chase(LightGroup):
         self.move_envelope.reset()
         self.current_moveto = self.moveto
 
+    def reset_positions(self):
+        if self.trigger_state:
+            self.moveto = int(self.center_position) #  self.end_pos
+        else:
+            self.moveto = self.end_pos
+        self.center_position = self.last_center = self.start_pos
+        self.moving = False
+
     def update_position(self, show):
         if self.current_moveto != self.moveto:
             self.setup_move()
         if self.moveto is not None and (self.center_position != self.current_moveto):
-            time_delta = self.get_time_delta(show.timecode)
-            if time_delta < 0:
-                return
             # this min max business is because the tween algos will overshoot
+            # TODO there is a glitch in the pulse demo where it struggles to
+            # get to the very end
             if self.moveto > self.center_position:
                 self.center_position = min(self.moveto,
-                        self.move_envelope.update(time_delta))
+                        self.move_envelope.update(self.time_delta))
             else:
                 self.center_position = max(self.moveto,
-                        self.move_envelope.update(time_delta))
-
+                        self.move_envelope.update(self.time_delta))
+        if self.move_envelope.completed:
+            self.reset_positions()
 
     def update(self, show):
-        if not self.trigger_intensity:
+
+        # always keep time delta updated
+        time_delta = self.get_time_delta(show.timecode)
+        if self.time_delta < 0:
             return
-        self.update_position(show)
+        if self.name == "follow chase":
+            # print "center pos", self.center_position
+            try:
+                x = self.move_envelope.profile.change
+                # print "profile change", x
+            except:
+                pass
+            # print "moving: ", self.moving
+        if not self.trigger_intensity:
+            if self.off_mode == "all":
+                return
+        if self.moving:
+            self.update_position(show)
         self.render()
         for effect in self.effects:
             effect.update(show, [self])
@@ -401,6 +443,7 @@ class Chase(LightGroup):
         if self.last_center is None:
             self.last_center = self.start_pos
         current_center = int(self.center_position)
+        # trigger everything up to current center
         [e.trigger(self.trigger_intensity) for e in self.elements[self.last_center:current_center]]
         # self.elements[int(self.center_position)].trigger(self.trigger_intensity)
         self.last_center = current_center
@@ -520,343 +563,6 @@ class EnvelopeElement(LightElement):
 # would create a chase, potentially varying some parameters (ie start and end
 # or duration) and would trigger it regularly or randomly.  can be used to
 # create regular water drips, or drifting snow effects
-
-# @@ Marquee class (sub of LightChase)
-"""
-has width and gap and speed/rate attribute
-each cycle a group of leaders is established and on_action (default trigger)
-is performed:
-    while running:
-    for offset in range(0,(width+gap)):
-        for leader in range(start+offset,end,width+gap):
-            leader_on(self.elements[leader]) # this would default to trigger, but subclass could customize
-            trailer = leader-width
-            trailer_off(self.elements[trailer])
-    # when offset resets, the last leader, should become trailer of each group
-
-# speed/rate for chase compatability, should speed/time be time for one
-# cycle, or for time it would take pulse to move all the way across?
-
-leader_on and trailer_off would be member functions that in default class
-would trigger on, trigger off elements - but in subclass could do things like color shift
-
-
-"""
-
-class LightChaseOldVersion(LightGroup):
-    """A chase of light Elements
-
-    speed controls how fast the chase advances from start to finish min speed
-    is 0, max_speed is set, then speed control can be mapped to a control
-    signal.  @@ have a general problem here with whether to force all map
-    values to be 0-255 or allow some to be 0-255 while others can be 0-1
-
-    width defines how many lights are lit up at a time as the chase progresses
-    default is 1, the width trails the leading edge.
-
-    a width of 0 means that the element will stay on until the chase itself is
-    turned off
-
-    anti-alias: if true, lights will be faded on in proportion to a imaginary
-    chase width center moving between discreet elements. In this way, a chase
-    can appear to have greater resolution than the number of elements it
-    contains.
-
-    a chase can be run under the following trigger modes (chase.trigger_mode):
-    sustain - chase runs as long as note/signal/trigger is maintained (default)
-    toggle - chase is run continuously after note/signal/trigger until another note/signal/trigger
-    single - chase runs through once, no matter how long key held down
-
-    Animation of the chase is one of the following modes (chase.animation_mode):
-    loop - chase loops repeating from the beginning when end is reached
-    bounce - chase goes from start to end, then reverses from end to start, etc
-    marquee - multiple starts are triggered @@need param - perhaps gap between widths
-
-    chase off modes:
-    off_trigger
-    all off - all lights in chase are turned off at once
-    chase off - elements are turned off in sequence
-    chase off reverse - elements turned off in reverse sequence
-    uses tween_off
-
-    Other paremeters:
-    loop_delay - delay between a loop ending, and starting again
-    antialias
-    randomize - if true, will randomize the order of elements each time through
-    element_initialize - a dictionary of parameters to initialize each element
-    with
-
-    todo:
-    Will need a better way of tracking an index chase that can switch direction.
-    the width trail would best be handled by keeping a list of on_elements and
-    pushing and popping from that to keep the disired length.
-
-    Need to define a way of a start frame and end frame in addtion to start and
-    end that is, the tween values calculated for start and end, but only
-    displayed through the frame.  Ultimately means solving a time t for x, so
-    that a time offset can be applied to the timedelta passed to the first
-    tween update.  This calc could be done at trigger time or init and would
-    most practically be done by calling the tween math function in a tight loop
-    This only is needed for non-linear tweens, so may not be pressing feature.
-
-    start and end index - defaults to first and last element - but for some tweens, need "margins"
-
-    if duration of elements is short such that all lights are off at end of chase, and off trigger received
-        lights will be sent 0 trigger in chase/reverse even though they are out
-
-    Inverse Mode: move a light off - whole chase on, the dark part is what animate (inverse)
-
-
-    split from middle, or join from ends - this can be done by grouping with 2 chases.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(LightChase, self).__init__(*args, **kwargs)
-        # @@ pop kwargs elements here
-        self.tweener = pytweener.Tweener()
-        self.tween_on = "linear"
-        self.tween_off = "linear"
-        self.start = 0.0
-        self.end = float(len(self.elements))
-        self.index = 0
-        self.speed_control = 1
-        self.max_speed = 1
-        self.speed = self.speed_control * self.max_speed
-        self.animation_mode = "loop"
-        self.off_trigger = "all" #all, chase, reverse
-        self.running = 0
-        self.start_time = 0
-        self.antialias = False
-        self.width = 1
-        self.initialized = False
-        self.last_update = 0
-        self.triggered_intensity = 0
-        self.randomize = False
-        self.loop_delay = 0
-        self._delay_till = 0 # how loop_delay is implemented
-        self.element_initialize = {}
-        self._pulse = deque()
-        self.last_added_index = 0
-        # self.logger = logging.getLogger("%s.%s.%s" % (__name__, "LightChase", self.name))
-
-
-    def get_tween_mode_func(self, trigger_type="on"):
-        if trigger_type.lower() == "on":
-            return getattr(self.tweener, self.tween_on.upper())
-        else:
-            return getattr(self.tweener, self.tween_off.upper())
-
-    def setup(self):
-        # @@ is this func needed/used?
-        self.index = 0
-        self.initialized = True
-
-    def reset(self):
-        """reset various values to beginning of chase"""
-        pass
-
-    def update(self, show):
-        if not self.running: return False
-        if self._delay_till:
-            if show.timecode < self._delay_till:
-                # print "delaying %s < %s" % (show.timecode, self._delay_till)
-                return
-            else:
-                # @@ should these next few lines be factored out into a "reset" func?
-                if self.index_tween.complete:
-                    self.index_tween.complete = False
-                # self.index_tween.delta = self.index = self.start
-                self.last_update = 0
-                self._delay_till = 0
-                self.index_tween.delta = self.index = self.last_added_index = 0
-        if not self.last_update:
-            self.last_update = show.timecode
-            # print "setting start time"
-            return False
-        time_delta = show.timecode - self.last_update
-        self.last_update = show.timecode
-        self.tweener.update(time_delta)
-        # print "seq index %s" % self.index
-        # @@ may need to use math.ciel for intindex when direction is reversed
-        intindex = int(self.index)
-        if not self.antialias:
-            self.index = intindex
-
-        logger.debug("seq index %s" % self.index)
-
-
-        if self.intensity:
-            # this approach to pulse, will handle direction switches easily
-            while intindex > self.last_added_index:
-                self.last_added_index += 1
-                logger.debug("self.last_added_index")
-                logger.debug(self.last_added_index)
-                index_element = self.elements[self.last_added_index - 1]
-                # if self._pulse[-1] != index_element:
-                self._pulse.append(index_element)
-                index_element.trigger(self.intensity)
-            while len(self._pulse) > self._width:
-                trail_element = self._pulse.popleft()
-                trail_element.trigger(0)
-
-            if self.antialias and (intindex < self.end) and self.index % 1:
-                e = self.elements[intindex + 1]
-                partial = int((self.index % 1 * 255) * (255 / self.intensity))
-                e.trigger(partial)
-                # @@ antialias in reverse will be tricky
-                # need a direction attribute
-                # index of 9.8 in reverse means e[9] is at .2
-                # 9.3 is e[9] at .7
-                # on top of that, reversed direction could be a leading edge
-                # in the case of small width, or retreating edge in case of
-                # width = 0.  In latter, want to keep current approach to which
-                # side of edge is antialiased
-        else:
-            # being here means we are animating an off sequence (rev or chase)
-            # @@ self.index should be on or off here?
-            for e in self.elements[intindex:self.end]:
-                e.trigger(self.triggered_intensity)
-            for e in self.elements[self.start:intindex]:
-                e.trigger(self.intensity)
-        # else:
-        #            # duration is set - this should be width ulimately @@
-        #            print "have duration"
-        #            if self.antialias or self.width > 1:
-        #                # @@ handle width stuff here
-        #
-        #                # i, v = divmod (self.index-1, 1)
-        #                # self.elements[int(i)].trigger(int(v*255))
-        #                if self.index%1 > .5:
-        #                    i, v = divmod (self.index+1, 1)
-        #                    self.elements[int(i)].trigger(int(v*255)*(255/self.intensity))
-        #                self.elements[int(self.index)].trigger(self.intensity)
-        #            else:
-        #                self.elements[self.index].trigger(self.intensity)
-
-        if self.index == len(self.elements):
-            # @@ this needs to be fixed for reverse, bounce, etc
-            # @@ also need to test this against endpoint, not len, for chases that overshoot?
-            # @@ all this end code should be tied to end of tween duration
-            # or perhaps check if index_tween is complete
-            logger.debug("end reached")
-            if self.randomize:
-                random.shuffle(self.elements)
-
-            if self.animation_mode == "loop":
-                # reset index
-                logger.debug('looping')
-                logger.debug(self.loop_delay)
-                logger.debug(self._delay_till)
-                if self.loop_delay and (self._delay_till == 0):
-                    self._delay_till = show.timecode + self.loop_delay
-                    return
-                logger.debug("loop reset")
-                # messing with the tween complete value is a little bit hacky - but we know we
-                # can safely do this because we know that nothing will call tweener.update outside of the
-                # chase update funciton.
-                if self.index_tween.complete:
-                    self.logger.debug('resetting tween complete to false')
-                    self.index_tween.complete = False
-                self.index_tween.delta = self.index = self.last_added_index = 0
-                self._delay_till = 0
-                # testing:
-                self.last_update = 0
-            else:
-                self.running = self.index = self.last_update = 0
-
-    def kill(self):
-        self.running = self.index = self.last_update = self.last_added_index = 0
-        self.triggered_intensity = 0
-        for e in self.elements:
-            e.trigger(0)
-            # @@ need a way to keep initialized release intact for final trigger
-            if self.element_initialize:
-                e.restore_defaults()
-
-        self.tweener.removeTweeningFrom(self)
-
-    def trigger_tween_done(self, *args, **kwargs):
-        # @@ will use for looping and passing etc
-        # will also use for reset of various values to 0
-        self.logger.debug("trigger tween done")
-        if self.animation_mode == "loop":
-            pass
-            # index_tween = self.tweener.getTweensAffectingObject(self)[0]
-            # self.start_time = time.time() # @@ could be show time of update, if I had it
-        # self.running = 0
-        # self.last_update = 0
-
-    def trigger(self, intensity, **kwargs):
-        # @@ need to add tween shaping here
-        trigger_time = time.time()
-        self.logger.debug("len self elements: %s" % len(self.elements))
-        if self.trigger_mode == "toggle":
-            self.logger.debug("toggle")
-            if not intensity:
-                # we ignore "note_off" style messages
-                return
-            if self.triggered_intensity and intensity:
-                # trigger on, but already on, so toggle off
-                intensity = 0
-
-        if intensity:
-            self.logger.debug("trigger on")
-            if self.randomize:
-                random.shuffle(self.elements)
-            self.index = self.start
-            self.triggered_intensity = intensity
-            # print self.element_initialize
-            if not self.end:
-                self.end = float(len(self.elements))
-            self.logger.debug("self.end: %s" % self.end)
-            chase_width = int(self.end - self.start)
-            if self.width:
-                if self.width > chase_width:
-                    raise ValueError("chase width can not be wider than chase")
-                self._width = self.width
-            else:
-                # 0 width implies entire chase range = width
-                self._width = chase_width
-
-            tw = self.tweener.addTween(self,
-                                    index=self.end,
-                                    tweenTime=float(self.speed_control * self.max_speed),
-                                    tweenType=self.get_tween_mode_func(),
-                                    onCompleteFunction=self.trigger_tween_done,
-                                    )
-            self.index_tween = tw
-            self.running = 1 # 1 is forward, -1 is backwards, 0 is not running
-            self.start_time = trigger_time
-            for e in self.elements:
-                if self.element_initialize:
-                    e.set_special_state(self.element_initialize)
-                # e.trigger(0) @@ not sure we really want to do this esp if plan is to support overlay more
-                # e.trigger(intensity)
-        else:
-            logger.debug("chase trigger: OFF")
-            self.triggered_intensity = 0
-            if self.off_trigger == "all" or self.width:
-                # a pulse width implies only a "all" off mode
-                self.kill()
-                return
-            elif self.off_trigger == "reverse":
-                # @@ assumes only one tween - problematic
-                t = self.index_tween
-                tweenable = t.getTweenable("index")
-                tweenable.startVal = self.index
-                tweenable.change = self.index * -1
-                t.duration = trigger_time - self.start_time
-                t.tween = self.get_tween_mode_func("off")
-                self.start_time  = trigger_time
-                self.running = -1
-            elif self.off_trigger == "chase":
-                # just restart the chase with the current zero intensity
-                # @@ need to consider how an on or off "bounces" - look at loop - start time reset is not enough
-                    # may have any value greater than or lesser than index match intensity?
-                self.start_time = trigger_time
-                self.index_tween.tween = self.get_tween_mode_func("off")
-        self.intensity = intensity
-
 
 class LightShow(object):
 
