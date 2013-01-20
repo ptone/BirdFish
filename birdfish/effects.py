@@ -7,6 +7,7 @@ have one or more targets that they can apply the effect to in unison
 change some attribute over time - generally using envelopes
 """
 
+import random
 from birdfish.envelope import Envelope, EnvelopeSegment, StaticEnvelopeSegment
 from birdfish.lights import BaseLightElement, LightElement
 from birdfish import tween
@@ -30,6 +31,70 @@ class BaseEffect(BaseLightElement):
             self.trigger_state = 1
         else:
             self.trigger_state = 0
+
+class Twinkle(BaseEffect):
+    def __init__(self, frequency=2, **kwargs):
+        super(Twinkle, self).__init__(**kwargs)
+        self.on_min = .01
+        self.on_max = 1
+        self.off_min = .8
+        self.off_max = 1.3
+        self.intensity_min = .3
+        self.intensity_max = 1
+        self.blinkon = True
+        self.cycle_elapsed = 0
+        self.last_changed = None
+        # the parameters of current cycle
+        self.on_dur = self.off_dur = self.intensity = 0
+        self.durations = {True:self.on_dur, False:self.off_dur}
+        # self.setup_cycle()
+
+    def setup_cycle(self):
+        self.on_dur = self.on_min + random.random() * (self.on_max - self.on_min)
+        self.off_dur = self.off_min + random.random() * (self.off_max - self.off_min)
+        self.intensity = self.intensity_min + random.random() * (self.intensity_max - self.intensity_min)
+        self.durations = {True:self.on_dur, False:self.off_dur}
+
+    def update(self, show, targets=None):
+        # bit TODO - currently if the twinkle is assigned to a light
+        # the effects trigger state is set to 0 when it itself triggers the
+        # light off
+        # this has big ramification on how to couple the trigger of teh element
+        # and its effects, and whether the effects themselves can use triggers
+        # to cuase the effect
+        # also an element's effects are only called if it is triggered
+        # currently working around this by adding effect to show - but then how to trigger?
+        #
+        self.trigger_state = 1
+        if self.trigger_state:
+            # print 'update twinkle'
+            time_delta = self.get_time_delta(show.timecode)
+            if time_delta < 0:
+                # negative means a delta hasn't yet be calculated
+                return
+            if not targets:
+                targets = self.targets
+            elif isinstance(targets, LightElement):
+                targets = [targets]
+            self.cycle_elapsed += time_delta
+            if self.cycle_elapsed > self.durations[self.blinkon]:
+                # current cycle complete
+                if self.blinkon:
+                    # trigger off targets
+                    [t.trigger(0) for t in targets]
+                    self.setup_cycle()
+                else:
+                    [t.trigger(self.intensity) for t in targets]
+
+                self.blinkon = not self.blinkon
+                self.cycle_elapsed = 0
+
+        def _off_trigger(self):
+            print "twinkle off trigger"
+            super(Twinkle, self)._off_trigger()
+            # only works for explicit effect targets
+            [t.trigger(0) for t in self.targets]
+            self.trigger_state = 1
 
 
 class Blink(BaseEffect):
