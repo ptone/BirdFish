@@ -143,6 +143,9 @@ class LightElement(BaseLightElement):
         # mostly to be overridden by subclasses
         self.intensity = intensity
 
+    def _on_trigger(self):
+        pass
+
     def _off_trigger(self):
         self.trigger_state = 0
         if self.bell_mode:
@@ -166,6 +169,7 @@ class LightElement(BaseLightElement):
             logger.debug("%s: trigger on @ %s" % (self.name, intensity))
             self.intensity = 0.0  # reset light on trigger
             self.adsr_envelope.trigger(state=1)
+            self._on_trigger()
         elif intensity == 0 and self.trigger_state and not self.trigger_toggle:
             self._off_trigger()
         elif intensity and self.trigger_state and self.trigger_toggle:
@@ -290,8 +294,10 @@ class LightGroup(LightElement):  # TODO why base light element, and not light el
     def trigger(self, sig_intensity, **kwargs):
         if sig_intensity:
             intensity = self.intensity_overide or sig_intensity
+            [x.trigger(intensity) for x in self.effects]
         else:
             intensity = 0
+            [x.trigger(0) for x in self.effects]
         for l in self.elements:
             l.trigger(intensity)
 
