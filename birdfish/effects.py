@@ -67,15 +67,15 @@ class Pulser(BaseEffect):
         self.envelope.segments = [on_flash, off_flash]
 
     def update(self, show, targets=None):
-        if not targets:
-            targets = self.targets
-        elif isinstance(targets, LightElement):
-            targets = [targets]
         if self.trigger_state:
             time_delta = self.get_time_delta(show.timecode)
             if time_delta < 0:
                 # negative means a delta hasn't yet be calculated
                 return
+            if not targets:
+                targets = self.targets
+            elif isinstance(targets, LightElement):
+                targets = [targets]
             val = self.envelope.update(time_delta)
             for target in targets:
                 target.set_intensity(val * target.intensity)
