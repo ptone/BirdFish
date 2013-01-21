@@ -3,6 +3,7 @@ import sys
 from birdfish.input.midi import MidiDispatcher
 from birdfish.lights import RGBLight, Chase, LightShow
 from birdfish.output.lumos_network import LumosNetwork
+from birdfish import tween
 
 
 # from birdfish.log_setup import logger
@@ -118,6 +119,41 @@ show.add_element(follow_chase)
 # midi code 70 is the "M" key on the qwerty keyboard for the midikeys app
 dispatcher.add_observer((0,69), follow_chase)
 
+reverse_chase = Chase(
+        name="reverse chase",
+        start_pos=12,
+        end_pos=65,
+        speed=1,
+        move_tween=tween.OUT_EXPO,
+        )
+reverse_chase.off_mode = "reverse"
+
+elementid = 0
+for i in range(1,360,3):
+    elementid += 1
+    l = RGBLight(
+            start_channel=i,
+            name="pulse_%s" % elementid,
+            attack_duration=0,
+            decay_duration=0,
+            release_duration=0,
+            sustain_value=1,
+            )
+    l.hue = .75
+    l.saturation = 1
+    l.update_rgb()
+    # l.simple = True
+    # add the light to the network
+    dmx3.add_element(l)
+    reverse_chase.elements.append(l)
+
+
+show.add_element(reverse_chase)
+# set the input interface to trigger the element
+# midi code 70 is the "M" key on the qwerty keyboard for the midikeys app
+dispatcher.add_observer((0,67), reverse_chase)
+
+
 # startup the midi communication - runs in its own thread
 dispatcher.start()
 
@@ -129,5 +165,3 @@ except KeyboardInterrupt:
     # cleanup
     dispatcher.stop()
     sys.exit(0)
-
-

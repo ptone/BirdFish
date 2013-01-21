@@ -238,10 +238,8 @@ class RGBLight(LightElement):
         else:
             intensity = self.intensity
         # this funct takes all 0-1 values
-        # print "intensity %s " % intensity
         r, g, b = colorsys.hsv_to_rgb(hue, saturation, intensity)
         # here intensity is assumed to be full, as HSV to RGB sets RGB values accordingly
-        # print "result %s, %s, %s" % (r,g,b)
         self.red = r
         self.green = g
         self.blue = b
@@ -346,7 +344,7 @@ class Chase(LightGroup):
             for e in self.elements:
                     # blackout
                     e.trigger(0)
-        elif self.off_mode == "follow":
+        elif self.off_mode in ["follow", "reverse"]:
             # reset the chase to follow itself as trigger off
             # TODO - placeholder, not sure anything needs to be done
             self.moving = True
@@ -356,7 +354,7 @@ class Chase(LightGroup):
             if self.moving:
                 # we are already in either in an active on or off chase
                 # TODO - do we reset everything - draw on top...?
-                print "Already moving"
+                # print "Already moving"
                 return
             self.setup_move()
             self.trigger_state = 1
@@ -392,11 +390,18 @@ class Chase(LightGroup):
         self.current_moveto = self.moveto
 
     def reset_positions(self):
-        if self.trigger_state:
-            self.moveto = int(self.center_position) #  self.end_pos
-        else:
-            self.moveto = self.end_pos
-        self.center_position = self.last_center = self.start_pos
+        if (self.off_mode == "reverse"):
+            if self.center_position == self.start_pos:
+                self.moveto = self.end_pos
+            else:
+                self.moveto = self.start_pos
+        else: # all or follow
+            if self.trigger_state:
+                self.moveto = int(self.center_position) #  self.end_pos
+            else:
+                self.moveto = self.end_pos
+            self.center_position = self.last_center = self.start_pos
+        self.moveto = int(self.moveto)
         self.moving = False
 
     def update_position(self, show):
@@ -420,14 +425,6 @@ class Chase(LightGroup):
         time_delta = self.get_time_delta(show.timecode)
         if self.time_delta < 0:
             return
-        if self.name == "follow chase":
-            # print "center pos", self.center_position
-            try:
-                x = self.move_envelope.profile.change
-                # print "profile change", x
-            except:
-                pass
-            # print "moving: ", self.moving
         if not self.trigger_intensity:
             if self.off_mode == "all":
                 return
@@ -443,7 +440,10 @@ class Chase(LightGroup):
             self.last_center = self.start_pos
         current_center = int(self.center_position)
         # trigger everything up to current center
-        [e.trigger(self.trigger_intensity) for e in self.elements[self.last_center:current_center]]
+        if not self.trigger_state and self.off_mode == "reverse":
+            [e.trigger(self.trigger_intensity) for e in self.elements[current_center:self.last_center]]
+        else:
+            [e.trigger(self.trigger_intensity) for e in self.elements[self.last_center:current_center]]
         # self.elements[int(self.center_position)].trigger(self.trigger_intensity)
         self.last_center = current_center
 
