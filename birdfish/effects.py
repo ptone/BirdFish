@@ -56,18 +56,12 @@ class Twinkle(BaseEffect):
         self.durations = {True:self.on_dur, False:self.off_dur}
 
     def update(self, show, targets=None):
-        # bit TODO - currently if the twinkle is assigned to a light
-        # the effects trigger state is set to 0 when it itself triggers the
-        # light off
-        # this has big ramification on how to couple the trigger of teh element
-        # and its effects, and whether the effects themselves can use triggers
-        # to cuase the effect
-        # also an element's effects are only called if it is triggered
-        # currently working around this by adding effect to show - but then how to trigger?
-        #
+        # note, currently can not easily assign a twinkle to an elements effects
+        # array - must add it to the show directly as it uses the trigger method
+        # this is true of any effect that uses trigger method of elements for
+        # rendering the effect
         self.trigger_state = 1
         if self.trigger_state:
-            # print 'update twinkle'
             time_delta = self.get_time_delta(show.timecode)
             if time_delta < 0:
                 # negative means a delta hasn't yet be calculated
