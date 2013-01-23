@@ -63,16 +63,12 @@ class ColorShift(BaseEffect):
 
     def update(self, show, targets=None):
         if self.trigger_state:
-            time_delta = self.get_time_delta(show.timecode)
-            if time_delta < 0:
-                # negative means a delta hasn't yet be calculated
-                return
             if not targets:
                 targets = self.targets
             elif isinstance(targets, LightElement):
                 targets = [targets]
-            hue = self.hue_envelope.update(time_delta)
-            sat = self.sat_envelope.update(time_delta)
+            hue = self.hue_envelope.update(show.time_delta)
+            sat = self.sat_envelope.update(show.time_delta)
             for target in targets:
                 target.hue = hue
                 target.saturation = sat
@@ -108,15 +104,11 @@ class Twinkle(BaseEffect):
         # rendering the effect
         self.trigger_state = 1
         if self.trigger_state:
-            time_delta = self.get_time_delta(show.timecode)
-            if time_delta < 0:
-                # negative means a delta hasn't yet be calculated
-                return
             if not targets:
                 targets = self.targets
             elif isinstance(targets, LightElement):
                 targets = [targets]
-            self.cycle_elapsed += time_delta
+            self.cycle_elapsed += show.time_delta
             if self.cycle_elapsed > self.durations[self.blinkon]:
                 # current cycle complete
                 if self.blinkon:
@@ -173,15 +165,11 @@ class Pulser(BaseEffect):
 
     def update(self, show, targets=None):
         if self.trigger_state:
-            time_delta = self.get_time_delta(show.timecode)
-            if time_delta < 0:
-                # negative means a delta hasn't yet be calculated
-                return
             if not targets:
                 targets = self.targets
             elif isinstance(targets, LightElement):
                 targets = [targets]
-            val = self.envelope.update(time_delta)
+            val = self.envelope.update(show.time_delta)
             for target in targets:
                 target.set_intensity(val * target.intensity)
 

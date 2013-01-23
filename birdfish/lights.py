@@ -35,10 +35,6 @@ class BaseLightElement(object):
         self.intensity = 0.0
         self.channels = {}
 
-        # TODO are these both needed?
-        self.last_updated = 0
-        self.last_update = 0
-
         self.channels[start_channel] = 'intensity'
 
     def update_data(self, data):
@@ -66,16 +62,6 @@ class BaseLightElement(object):
             # = max (dmx_val,dmx[channel-1]) #zero index adjust??
             # currently this brightest wins is done by zero out the data
 
-    def get_time_delta(self, current_time):
-        if not self.last_update:
-            # can't set this from trigger - since don't have access to show
-            self.last_update = current_time
-            # returning -1 signals that no delta is yet available
-            self.time_delta = -1
-        self.time_delta = current_time - self.last_update
-        self.last_update = current_time
-        return self.time_delta
-
 class LightElement(BaseLightElement):
 
     def __init__(self, *args, **kwargs):
@@ -98,7 +84,6 @@ class LightElement(BaseLightElement):
     def bell_reset(self):
         # TODO so why not just trigger 0 here?
         self.trigger_state = 0
-        self.last_update = 0
         self.trigger_intensity = 0.0
         self.intensity = 0
         self.adsr_envelope.trigger(state=0)
@@ -107,10 +92,6 @@ class LightElement(BaseLightElement):
         if (self.simple or not (self.intensity or self.trigger_intensity)):
             # light is inactive or in sustain mode
             return self.intensity
-        time_delta = self.get_time_delta(show.timecode)
-        if time_delta < 0:
-            # negative means a delta hasn't yet be calculated
-            return self.intensity
         if self.bell_mode and self.adsr_envelope.segments[0].index == 2:
             # bell mode ignores trigger off - simulate trigger off once
             # sustain levels are reached
@@ -118,7 +99,7 @@ class LightElement(BaseLightElement):
             return
 
         if self.adsr_envelope.advancing:
-            intensity_scale = self.adsr_envelope.update(time_delta)
+            intensity_scale = self.adsr_envelope.update(show.time_delta)
             self.set_intensity(self.trigger_intensity * intensity_scale)
         else:
             logger.debug(self.name)
@@ -127,7 +108,6 @@ class LightElement(BaseLightElement):
             self.intensity = max(0, self.intensity)
             logger.debug('not advancing, intensity: {}'.format(self.intensity))
             logger.debug('not advancing, trigger intensity: {}'.format(self.trigger_intensity))
-            self.last_update = 0
             # only turn off effects here so they can continue to effect releases
             [x.trigger(0) for x in self.effects]
 
@@ -329,7 +309,6 @@ class Chase(LightGroup):
     def _off_trigger(self):
         self.trigger_state = 0
         self.trigger_intensity = 0
-        self.last_update = 0
         # if self.bell_mode:
             # TODO does bell apply to chase classes?
             # ignore release in bell mode
@@ -411,7 +390,7 @@ class Chase(LightGroup):
             # this min max business is because the tween algos will overshoot
             # TODO there is a glitch in the pulse demo where it struggles to
             # get to the very end
-            new_position = self.move_envelope.update(self.time_delta)
+            new_position = self.move_envelope.update(self.show.time_delta)
             if self.moveto > self.center_position:
                 self.center_position = min(self.moveto, new_position)
             else:
@@ -422,9 +401,6 @@ class Chase(LightGroup):
     def update(self, show):
 
         # always keep time delta updated
-        time_delta = self.get_time_delta(show.timecode)
-        if self.time_delta < 0:
-            return
         if not self.trigger_intensity:
             if self.off_mode == "all":
                 return
@@ -566,6 +542,7 @@ class LightShow(object):
         self.named_elements = {}
         self.default_network = DefaultNetwork()
         self.networks.append(self.default_network)
+        self.time_delta = 0
 
     def add_element(self, element, network=None):
         if network:
@@ -594,6 +571,7 @@ class LightShow(object):
         return False
 
     def init_show(self):
+        # needed as params may be changed between __init__ and run_live
         for n in self.networks:
             n.init_data()
         self.frame_delay = 1.0 / self.frame_rate
