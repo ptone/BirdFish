@@ -6,7 +6,7 @@ have one or more targets that they can apply the effect to in unison
 
 change some attribute over time - generally using envelopes
 """
-
+from collections import OrderedDict
 import random
 from birdfish.envelope import Envelope, EnvelopeSegment, StaticEnvelopeSegment
 from birdfish.lights import BaseLightElement, LightElement
@@ -31,6 +31,52 @@ class BaseEffect(BaseLightElement):
             self.trigger_state = 1
         else:
             self.trigger_state = 0
+
+class ColorShift(BaseEffect):
+    # TODO notes:
+    # how does it handle the existing color of an element
+    # can I handle explicit start color, or take current color and shift both
+    # can we reset the color to the original?
+    #
+    def __init__(self, shift_amount=0, target=0, **kwargs):
+        super(ColorShift, self).__init__(**kwargs)
+        # a list of dictionaries for shift info
+        self.shifts = []
+        self.hue_envelope = Envelope(loop=-1)
+        self.sat_envelope = Envelope(loop=-1)
+
+    def _add_shift(self, start, end, duration, shape, envelope):
+        change = end - start
+        seg = EnvelopeSegment(
+                start=start,
+                change=change,
+                duration=duration,
+                tween=shape,
+                )
+        envelope.segments.append(seg)
+
+    def add_hue_shift(self, start=0, end=1, duration=5, shape=tween.LINEAR):
+        self._add_shift(start, end, duration, shape, self.hue_envelope)
+
+    def add_sat_shift(self, start=0, end=1, duration=5, shape=tween.LINEAR):
+        self._add_shift(start, end, duration, shape, self.sat_envelope)
+
+    def update(self, show, targets=None):
+        if self.trigger_state:
+            time_delta = self.get_time_delta(show.timecode)
+            if time_delta < 0:
+                # negative means a delta hasn't yet be calculated
+                return
+            if not targets:
+                targets = self.targets
+            elif isinstance(targets, LightElement):
+                targets = [targets]
+            hue = self.hue_envelope.update(time_delta)
+            sat = self.sat_envelope.update(time_delta)
+            for target in targets:
+                target.hue = hue
+                target.saturation = sat
+
 
 class Twinkle(BaseEffect):
     def __init__(self, frequency=2, **kwargs):
