@@ -534,25 +534,6 @@ class Pulse(Chase):
                 # dim
                 e.trigger(self.nodes[i - self.node_range[0]])
 
-
-
-class EnvelopeElement(LightElement):
-    """
-    updates a basic envelope object with a change in timeline
-    """
-    def __init__(self, *args, **kwargs):
-        super(EnvelopeElement, self).__init__(*args, **kwargs)
-        self.envelope = kwargs.get('envelope', None)
-        self.value = 0
-
-    def update(self, show):
-        if not self.envelope:
-            return
-        time_delta = self.get_time_delta(show.timecode)
-        if time_delta < 0:
-            return
-        self.value = self.envelope.update(time_delta)
-
 # @@ EffectChase
 # an subclass of chase that moves an effect(s) along a set of elements
 #  should have a way of keeping a list of transient
