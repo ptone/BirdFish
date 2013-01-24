@@ -122,7 +122,6 @@ class Twinkle(BaseEffect):
                 self.cycle_elapsed = 0
 
         def _off_trigger(self):
-            print "twinkle off trigger"
             super(Twinkle, self)._off_trigger()
             # only works for explicit effect targets
             [t.trigger(0) for t in self.targets]
