@@ -390,7 +390,7 @@ class Chase(LightGroup):
             # this min max business is because the tween algos will overshoot
             # TODO there is a glitch in the pulse demo where it struggles to
             # get to the very end
-            new_position = self.move_envelope.update(self.show.time_delta)
+            new_position = self.move_envelope.update(show.time_delta)
             if self.moveto > self.center_position:
                 self.center_position = min(self.moveto, new_position)
             else:
