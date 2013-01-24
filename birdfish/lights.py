@@ -579,7 +579,7 @@ class LightShow(object):
     def run_live(self):
         self.init_show()
         self.show_start = time.time()
-        self.timecode = self.show_start
+        self.timecode = 0
         while self.running:
             self.update()
             # print self.time_delta
