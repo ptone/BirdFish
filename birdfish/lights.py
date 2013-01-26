@@ -23,8 +23,6 @@ from birdfish.log_setup import logger
 # logger.setLevel(logging.INFO)
 # print logger
 
-frame_rate = 30
-
 
 class BaseLightElement(object):
     """docstring for BaseLightElement"""
