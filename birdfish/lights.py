@@ -476,22 +476,24 @@ class Pulse(Chase):
         logger.debug(self.node_range)
         logger.debug(self.nodes)
 
+    def reset_positions(self):
+        # pong mode:
+        logger.info("resetting-position")
+        # TODO factor out into proper mode for chase
+        # TODO - for some reason envelope.completed is firing one short of end pos
+        # this is likely also the cuase for the stranded pixel on some chase modes
+
+        if self.center_position + 1 >= self.end_pos:
+            logger.info("%s pong-end @ %s" % (self.name, self.end_pos))
+            self.moveto = self.start_pos
+            self.setup_move()
+        if self.center_position <= self.start_pos + 1:
+            self.moveto = self.end_pos
+            self.setup_move()
+
     def update(self, show):
         super(Pulse, self).update(show)
         logger.debug("%s Centered @ %s -> %s" % (self.name, self.center_position, self.end_pos))
-        # pong mode:
-        if self.center_position == self.end_pos:
-            logger.info("%s pong-end @ %s" % (self.name, self.end_pos))
-            self.moveto = self.start_pos
-            # lw = self.left_width
-            # self.left_width = self.right_width
-            # self.right_width = lw
-        if self.center_position == self.start_pos:
-            self.moveto = self.end_pos
-            # rw = self.right_width
-            # self.right_width = self.left_width
-            # self.left_width = rw
-
 
     def render(self):
         # if not self.nodes:
