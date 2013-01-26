@@ -1,3 +1,5 @@
+from __future__ import division
+
 import sys
 from collections import deque
 import colorsys
@@ -538,7 +540,7 @@ class LightShow(object):
         self.frame_rate = 40
         self.dmx_keep_alive = True
         self.scenemanager = SceneManager()
-        self.frame_delay = 1.0 / self.frame_rate
+        self.frame_delay = 1 / self.frame_rate
         self.running = True
         self.preview_enabled = False
         self.named_elements = {}
