@@ -540,7 +540,6 @@ class LightShow(object):
         self.scenemanager = SceneManager()
         self.frame_delay = 1 / self.frame_rate
         self.running = True
-        self.preview_enabled = False
         self.named_elements = {}
         self.default_network = DefaultNetwork()
         self.networks.append(self.default_network)
@@ -605,5 +604,3 @@ class LightShow(object):
         for n in self.networks:
             n.send_data()
 
-        if self.preview_enabled:
-            self.send_viewer_data()
