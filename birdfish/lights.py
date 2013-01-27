@@ -544,6 +544,9 @@ class LightShow(object):
         self.default_network = DefaultNetwork()
         self.networks.append(self.default_network)
         self.time_delta = 0
+        self.recent_frames = deque()
+        self.average_framerate = self.frame_delay
+        self.frame = 0
 
     def add_element(self, element, network=None):
         if network:
@@ -577,30 +580,62 @@ class LightShow(object):
             n.init_data()
         self.frame_delay = 1.0 / self.frame_rate
 
+    def frame_average(self, frame):
+        self.recent_frames.append(frame)
+        frame_count = len(self.recent_frames)
+        if frame_count > 8:
+            self.recent_frames.popleft()
+            frame_count -= 1
+        elif frame_count == 0:
+            return frame
+        return sum(self.recent_frames)/frame_count
+
     def run_live(self):
         self.init_show()
         self.show_start = time.time()
         self.timecode = 0
         while self.running:
+            # projected frame event time
+            now = time.time() + self.frame_delay
+            timecode = now - self.show_start
+            self.time_delta = timecode - self.timecode
+            self.timecode = timecode
             self.update()
-            # print self.time_delta
-            # @@ warning if time_delta greater than should be for frame rate
-            if (self.time_delta - self.frame_delay) > .01:
-                # print "slow by %s" % (self.frame_delay - self.time_delta)
-                pass
-            time.sleep(self.frame_delay)
+            post_update = time.time()
+            # how long did this update actually take
+            effective_frame = post_update - (now - self.frame_delay)
+            effective_framerate = self.frame_average(effective_frame)
+            discrepancy = effective_framerate - self.frame_delay
+            if discrepancy > .01:
+                self.frame_delay += .01
+                if discrepancy > .3:
+                    print "Warning - slow refresh"
+            elif discrepancy < -.01 and self.frame_delay > 1/self.frame_rate:
+                # we can speed back up
+                self.frame_delay -= .01
+            self.frame += 1
+            remainder = self.frame_delay - effective_frame
+            if remainder > 0:
+                # we finished early, wait to send the data
+                # TODO this wait could/should happen in another thread that
+                # handles the data sending - but currently sending the data
+                # is fast enough that this can be investigated later
+                time.sleep(remainder)
+            # pre_send = time.time()
+            for n in self.networks:
+                n.send_data()
+            if self.frame == 20:
+                self.frame = 0
+                # send_speed = nownow - pre_send
+                # print "framerate: %s" % min(self.frame_rate, int(1/effective_framerate))
+                # if remainder > 0:
+                    # print "buffer: %s%%" % int(remainder/self.frame_delay * 100)
+
 
     def update(self):
         """The main show update command"""
-        now = time.time()
-        timecode = now - self.show_start
-        self.time_delta = timecode - self.timecode
-        self.timecode = timecode
         self.scenemanager.update(self)
         for n in self.networks:
             n.update(self)
         for e in self.effects:
             e.update(self)
-        for n in self.networks:
-            n.send_data()
-
