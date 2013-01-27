@@ -1,6 +1,7 @@
 import sys
 
 from birdfish.input.midi import MidiDispatcher
+from birdfish.input.osc import OSCDispatcher
 from birdfish.lights import LightElement, LightShow
 from birdfish.output.lumos_network import LumosNetwork
 
@@ -15,7 +16,10 @@ dmx3 = LumosNetwork(3)
 show.networks.append(dmx3)
 
 # create an input interface
-dispatcher = MidiDispatcher("MidiKeys")
+midi_dispatcher = MidiDispatcher("MidiKeys")
+osc_dispatcher = OSCDispatcher(('0.0.0.0', 8998))
+
+
 
 # create a single channel light element
 single = LightElement(
@@ -30,17 +34,19 @@ dmx3.add_element(single)
 
 # set the input interface to trigger the element
 # midi code 41 is the "Q" key on the qwerty keyboard for the midikeys app
-dispatcher.add_observer((0,41),single)
+midi_dispatcher.add_observer((0,41), single)
+osc_dispatcher.add_trigger('/elements/push2', single)
 
 # startup the midi communication - runs in its own thread
-dispatcher.start()
-
+midi_dispatcher.start()
+osc_dispatcher.start()
 # start the show in a try block so that we can catch ^C and stop the midi
 # dispatcher thread
 try:
     show.run_live()
 except KeyboardInterrupt:
     # cleanup
-    dispatcher.stop()
+    midi_dispatcher.stop()
+    osc_dispatcher.stop()
     sys.exit(0)
 

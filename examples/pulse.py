@@ -1,6 +1,7 @@
 import sys
 
 from birdfish.input.midi import MidiDispatcher
+from birdfish.input.osc import OSCDispatcher
 from birdfish.lights import RGBLight, Pulse, LightShow
 from birdfish.output.lumos_network import LumosNetwork
 from birdfish import tween
@@ -17,6 +18,7 @@ show.networks.append(dmx3)
 
 # create an input interface
 dispatcher = MidiDispatcher("MidiKeys")
+osc_dispatcher = OSCDispatcher(('0.0.0.0', 8998))
 
 
 p = Pulse(name="greenpulse",
@@ -44,6 +46,7 @@ for i in range(1,360,3):
     # add the light to the network
     dmx3.add_element(l)
     p.elements.append(l)
+    osc_dispatcher.add_map('/2/fader2', l, 'hue')
 
 
 p.start_pos = 12
@@ -60,9 +63,11 @@ show.add_element(p)
 # set the input interface to trigger the element
 # midi code 70 is the "J" key on the qwerty keyboard for the midikeys app
 dispatcher.add_observer((0,70),p)
+osc_dispatcher.add_map('/elements/fader1', p, 'speed', in_range=(0,4), out_range=(.5, 10))
 
 # startup the midi communication - runs in its own thread
 dispatcher.start()
+osc_dispatcher.start()
 
 # start the show in a try block so that we can catch ^C and stop the midi
 # dispatcher thread
@@ -71,6 +76,7 @@ try:
 except KeyboardInterrupt:
     # cleanup
     dispatcher.stop()
+    osc_dispatcher.stop()
     sys.exit(0)
 
 
