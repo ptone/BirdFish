@@ -478,13 +478,13 @@ class Pulse(Chase):
 
     def reset_positions(self):
         # pong mode:
-        logger.info("resetting-position")
+        logger.debug("resetting-position")
         # TODO factor out into proper mode for chase
         # TODO - for some reason envelope.completed is firing one short of end pos
         # this is likely also the cuase for the stranded pixel on some chase modes
 
         if self.center_position + 1 >= self.end_pos:
-            logger.info("%s pong-end @ %s" % (self.name, self.end_pos))
+            logger.debug("%s pong-end @ %s" % (self.name, self.end_pos))
             self.moveto = self.start_pos
             self.setup_move()
         if self.center_position <= self.start_pos + 1:
