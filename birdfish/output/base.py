@@ -31,6 +31,9 @@ class BaseNetwork(object):
         return False
         # element.network=self? will this ever be needed?
 
+    def remove_element(self, element):
+        self.elements.remove(element)
+
     def get_named_element(self,name):
         for l in self.elements:
             # @@ should this be case insensitive?

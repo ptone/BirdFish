@@ -2,6 +2,7 @@ from __future__ import division
 
 import sys
 from collections import deque
+from copy import deepcopy
 import colorsys
 import threading
 # from ola.OlaClient import OlaClient, Universe
@@ -464,6 +465,36 @@ class Chase(LightGroup):
         # self.elements[int(self.center_position)].trigger(self.trigger_intensity)
         self.last_center = current_center
 
+class Spawner(object):
+    def __init__(self, *args, **kwargs):
+        self.model = kwargs.get('model', None)
+        self.show = kwargs.get('show')
+        self.network = kwargs.get('network')
+        self.spawned = []
+        self.channels = []
+
+    def spawn(self):
+        instance = deepcopy(self.model)
+        # assuming we have elements - no point in spawning simple items
+        instance.elements = self.model.elements
+        self.show.add_element(instance)
+        # self.network.add_element(instance)
+        return instance
+
+    def update(self, show):
+        # remove completed items
+        for e in self.spawned:
+            if e.move_complete:
+                self.show.remove_element(e)
+                self.spawned.remove(e)
+
+    def trigger(self, intensity, **kwargs):
+        if intensity > 0:
+            new_spawn = self.spawn()
+            new_spawn.bell_mode = True
+            new_spawn.continuation_mode = None
+            new_spawn.trigger(intensity)
+            self.spawned.append(new_spawn)
 
 class Pulse(Chase):
     """
@@ -583,6 +614,12 @@ class LightShow(object):
                 return self.networks.append(network)
         else:
             return self.default_network.add_element(element)
+
+    def remove_element(self, element, network=None):
+        if network:
+            network.remove_element(element)
+        else:
+            return self.default_network.remove_element(element)
 
     def blackout(self):
         for n in self.networks:
