@@ -88,7 +88,7 @@ class LightElement(BaseLightElement):
         if (self.simple or not (self.intensity or self.trigger_intensity)):
             # light is inactive or in sustain mode
             return self.intensity
-        if self.bell_mode and self.adsr_envelope.segments[0].index == 2:
+        if self.bell_mode and self.adsr_envelope.segments[0].index == 1:
             # bell mode ignores trigger off - simulate trigger off once
             # sustain levels are reached
             self.bell_reset()
