@@ -30,9 +30,9 @@ for i in range(1,360,3):
             start_channel=i,
             name="pulse_%s" % elementid,
             attack_duration=.3,
-            decay_duration=.4,
-            release_duration=0,
-            sustain_value=0,
+            decay_duration=0,
+            release_duration=.4,
+            sustain_value=1,
             )
     l.hue = .54
     l.saturation = 1
