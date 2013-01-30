@@ -306,6 +306,8 @@ class Chase(LightGroup):
         self.moving = False
         # off mode may be all, follow, reverse
         self.off_mode = "all"
+        self.continuation_mode = None
+        self.move_complete = False
 
     def _off_trigger(self):
         self.trigger_state = 0
@@ -317,7 +319,6 @@ class Chase(LightGroup):
 
         logger.debug("%s: pulse trigger off" % self.name)
         self.reset_positions()
-        self.setup_move()
 
         if self.off_mode == "all":
             # TODO some cleanup needed - moving set to false in
@@ -339,12 +340,15 @@ class Chase(LightGroup):
                 # TODO - do we reset everything - draw on top...?
                 # print "Already moving"
                 return
-            self.setup_move()
+            # self.reset_positions()
+            # TODO so reset positions only for off trigger?
             self.trigger_state = 1
             self.trigger_intensity = intensity
             self.center_position = self.last_center = self.start_pos
+            self.moveto = self.end_pos
             logger.debug("%s: chase trigger on @ %s" % (self.name, intensity))
             self.moving = True
+            self.setup_move()
         elif intensity == 0 and self.trigger_state and not self.trigger_toggle:
             self._off_trigger()
         elif intensity and self.trigger_state and self.trigger_toggle:
@@ -371,33 +375,54 @@ class Chase(LightGroup):
                     self.move_envelope.profile.change / self.speed)
         self.move_envelope.reset()
         self.current_moveto = self.moveto
+        self.move_complete = False
 
-    def _on_move_complete(self):
-        pass
+    def _move_completed(self):
+        print "move completed"
+        # called at the end of a move, for looping, pong, etc
+        # TODO while pulse paused at one end - this is firing multiple
+        # times
+        if self.continuation_mode == 'pong':
+            print 'pong'
+            if round(self.center_position) == self.end_pos:
+                logger.debug("%s pong-end @ %s" % (self.name, self.end_pos))
+                self.moveto = self.start_pos
+            if round(self.center_position) == self.start_pos:
+                self.moveto = self.end_pos
+        elif self.continuation_mode == 'loop':
+            # TODO
+            pass
+        else:
+            self.moving = False
+        self.move_complete = True
 
     def reset_positions(self):
-        # called in association with on or off trigger
+        # called in association with off trigger
         print 'resetting', self.center_position, self.off_mode
         if (self.off_mode == "reverse"):
             if self.center_position == self.start_pos:
                 self.moveto = self.end_pos
             else:
                 self.moveto = self.start_pos
+            self.moveto = int(self.moveto)
         else: # all or follow
             if self.trigger_state:
                 self.moveto = int(self.center_position) #  self.end_pos
             else:
                 self.moveto = self.end_pos
             self.center_position = self.last_center = self.start_pos
-        self.moveto = int(self.moveto)
+            self.moveto = int(self.moveto)
+            # setup_move only called from update_position if moveto != current moveto
+            # in all off situations, current_moveto never changes.
+            self.setup_move()
         self.moving = False
-        print "moveto ", self.moveto
+        print "moveto after reset", self.center_position, self.moveto, self.current_moveto
 
     def update_position(self, show):
         if self.current_moveto != self.moveto:
             self.setup_move()
         if self.moveto is not None:
-            if self.center_position != self.current_moveto:
+            if round(self.center_position) != self.current_moveto:
                 # this min max business is because the tween algos will overshoot
                 # TODO there is a glitch in the pulse demo where it struggles to
                 # get to the very end
@@ -411,7 +436,7 @@ class Chase(LightGroup):
             else:
                 # current moveto attained
                 print "current moveto attained via last update/round"
-                self.reset_positions()
+                self._move_completed()
 
     def update(self, show):
 
@@ -429,7 +454,8 @@ class Chase(LightGroup):
             # to give the final "frame" a chance to draw itself
             # this is not called if moveto is reached through rounding in
             # update_position
-            self.reset_positions()
+            # self.reset_positions()
+            self._move_completed()
 
     def render(self):
         # TODO needs to handle reverse situations better
@@ -474,6 +500,7 @@ class Pulse(Chase):
         self.nodes = []  # a list of element values for pulse
         self.node_range = []  # index range of current pulse
         self.anti_alias = True
+        self.continuation_mode = 'pong'
 
     def set_current_nodes(self):
         node_offset = self.center_position % 1
@@ -497,22 +524,6 @@ class Pulse(Chase):
         logger.debug("NodeData:")
         logger.debug(self.node_range)
         logger.debug(self.nodes)
-
-    def reset_positions(self):
-        # pong mode:
-        logger.debug("resetting-position")
-        # TODO factor out into proper mode for chase
-        # the value is rounded as pulses are antialiased by default
-        # and center pos may not reach exactly end_pos by end of duration
-        # TODO while pulse paused at one end - this is firing multiple
-        # times
-        if round(self.center_position) == self.end_pos:
-            logger.debug("%s pong-end @ %s" % (self.name, self.end_pos))
-            self.moveto = self.start_pos
-            # self.setup_move()
-        if round(self.center_position) == self.start_pos:
-            self.moveto = self.end_pos
-            # self.setup_move()
 
     def update(self, show):
         super(Pulse, self).update(show)

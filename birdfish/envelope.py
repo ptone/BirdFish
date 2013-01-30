@@ -71,7 +71,6 @@ class EnvelopeSegment(object):
         else:
             self.profile = EnvelopeProfile(tween=tween, start=start,
                     change=change, duration=duration, label="%s-profile" % label)
-        self.duration = float(duration)
         self.label = label
         self.elapsed = 0
         self.value = 0
@@ -88,6 +87,10 @@ class EnvelopeSegment(object):
         # current profile in effect
         return self.profile
 
+    @property
+    def duration(self):
+        return self.profile.duration
+
     def update(self, delta):
         # show updates are based on a delta since last update
         # while tweens are based on elapsed time
@@ -101,7 +104,11 @@ class EnvelopeSegment(object):
 
     @property
     def completed(self):
-        return self.elapsed >= self.duration
+        # print self.elapsed, self.duration
+        if self.elapsed >= self.profile.duration:
+            print self.elapsed, self.duration, self.value, self.profile.duration, self.profile.start, self.profile.change
+            print 'completed'
+        return self.elapsed >= self.profile.duration
 
 
 class StaticEnvelopeSegment(EnvelopeSegment):
@@ -110,11 +117,11 @@ class StaticEnvelopeSegment(EnvelopeSegment):
 
     def __init__(self, *args, **kwargs):
         super(StaticEnvelopeSegment, self).__init__(*args, **kwargs)
-        self.duration = 0
+        self.profile.duration = 0
         # TODO - this is a hack so sustain doesn't get advanced over
         # as part of an on envelope that has no attack
         # can't use a neg value as flag - as it will mess with duration math
-        self.duration = 99999999999999999999999999999999
+        self.profile.duration = 99999999999999999999999999999999
 
     def update(self, delta):
         # always return the starting value
