@@ -1,3 +1,6 @@
+from __future__ import division
+
+from collections import defaultdict
 import sys
 import protomidi.portmidi as pypm
 import Queue
@@ -17,7 +20,6 @@ class MidiReader(threading.Thread):
         pypm.init()
         self._input = pypm.Input(device)
         self._stopevent = threading.Event()
-        self._sleepperiod = 1.0
         self._queue = queue
 
     def run(self):
@@ -48,6 +50,7 @@ class MidiReader(threading.Thread):
         self.join()
 
 class MessageDispatcher(threading.Thread):
+# TODO
 # @@ this class is redundant right?
     observers = {}
     daemon = True
@@ -102,20 +105,31 @@ class MidiDispatcher(threading.Thread):
         threading.Thread.__init__(self, name="dispatcher")
         self._input = pypm.Input(device)
         self._stopevent = threading.Event()
-        self._sleepperiod = 1.0
         self.file = None
         self.file_obj = None
         self.logger = None
-        self.observers = {}
+        self.observers = defaultdict(list)
+
 
 
     def add_observer(self, message_key, recv, type='trigger'):
-        # @@ could just store first letter of type and simplify the look up end
-        # TODO defaultdict
-        if message_key in self.observers:
-            self.observers[message_key].append((recv,type))
-        else:
-            self.observers[message_key] = [(recv,type)]
+        self.observers[message_key].append({'receiver':recv, 'type':type})
+
+    def add_trigger(self, message_key, recv):
+        self.observers[message_key].append({
+            'type':'trigger',
+            'receiver':recv,
+            })
+
+    def add_map(self, message_key, recv, attribute, in_range=(0, 1), out_range=(0, 1)):
+        # TODO use namedtuple instead of dict
+        self.observers[message_key].append({
+            'type':'map',
+            'receiver':recv,
+            'in_range':in_range,
+            'out_range':out_range,
+            'attribute': attribute,
+            })
 
     def remove_observer(self, element):
         for message in self.observers:
@@ -125,33 +139,30 @@ class MidiDispatcher(threading.Thread):
     def dispatch(self, message):
         """take a midi message and dispatch it to object who are interested"""
         print message
-        message_key = (message.channel, message.note)
+        if message.type == 'control_change':
+            message_key = (message.channel, message.control)
+        else:
+            message_key = (message.channel, message.note)
         if message_key in self.observers:
-            for recv,type in self.observers[message_key]:
-                if type[0].lower() == 't':
+            for destination in self.observers[message_key]:
+                if destination['type'] == 'trigger':
                    # trigger type
                    vel = data = message.velocity / 127.0
-                   recv.trigger(vel, key=message_key)
-                   if self.logger:
-                       self.logger.log_event(recv,type,data)
-                elif type[0].lower() == 'm':
-                   # map data - recv is tuple of lightobj and attr list
-                   # TODO how does protomidi send data?
-                    message_data = data = message.value
-                    lightobj,attributes = recv
-                    for i, d in enumerate(message_data):
-                        # print "len"
-                        # print i, len(attributes)-1, d
-                        if i <= (len(attributes)-1):
-                            # print "i in range"
-                            # print d
-                            if d:
-                                # print "data OK"
-                                # or data change
-                                # generate a 0.0-1.0 value
-                                setattr(lightobj,attributes[i], d / 127.0)
-                                if self.logger:
-                                    self.logger.log_event(lightobj,type,d / 127.0, attr=attributes[i])
+                   destination['receiver'].trigger(vel, key=message_key)
+                elif destination['type'] == 'map':
+                    in_value = message.value
+                    assert (destination['in_range'][0] <= in_value <= destination['in_range'][1])
+                    if destination['in_range'] == destination['out_range']:
+                        out_value = in_value
+                    else:
+                        # convert to percentage:
+                        p = (in_value - destination['in_range'][0])/(
+                                destination['in_range'][1]
+                                - destination['in_range'][0])
+                        out_value = destination['out_range'][0] + (
+                                destination['out_range'][1]
+                                - destination['out_range'][0]) * p
+                    setattr(destination['receiver'], destination['attribute'], out_value)
         else:
             # @@ debug log undispatched signals
             print message
@@ -184,12 +195,14 @@ class MidiDispatcher(threading.Thread):
                         f.write(str(m) + '\n')
                 # print d
                 # put it into a pipe or queue
-            count += 1
+
+            # count += 1
             # heartbeat prints dot
             # if not count % 10:
                 # sys.stdout.write('.')
                 # sys.stdout.flush()
-            self._stopevent.wait(.1)
+
+            self._stopevent.wait(.02)
         print "%s ends" % (self.getName(),)
 
 
