@@ -48,6 +48,8 @@ p.start_pos = 12
 # p.left_width = p.right_width = 10
 p.speed = 1
 p.moveto = p.end_pos = 65
+p.continuation_mode = 'loop'
+p.trigger_toggle = True
 
 show.add_element(p)
 # set the input interface to trigger the element
@@ -80,7 +82,6 @@ for i in range(1,360,3):
     # add the light to the network
     dmx3.add_element(l)
     purple_chase.elements.append(l)
-
 
 show.add_element(purple_chase)
 # set the input interface to trigger the element

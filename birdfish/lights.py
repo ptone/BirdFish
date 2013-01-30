@@ -391,7 +391,8 @@ class Chase(LightGroup):
                 self.moveto = self.end_pos
         elif self.continuation_mode == 'loop':
             # TODO
-            pass
+            self.center_position = self.start_pos
+            self.setup_move()
         else:
             self.moving = False
         self.move_complete = True
