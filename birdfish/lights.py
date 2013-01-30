@@ -82,11 +82,7 @@ class LightElement(BaseLightElement):
                 # "%s.%s.%s" % (__name__, "LightElement", self.name))
 
     def bell_reset(self):
-        # TODO so why not just trigger 0 here?
-        self.trigger_state = 0
-        self.trigger_intensity = 0.0
-        self.intensity = 0
-        self.adsr_envelope.trigger(state=0)
+        self._off_trigger()
 
     def update(self, show):
         if (self.simple or not (self.intensity or self.trigger_intensity)):
@@ -128,9 +124,6 @@ class LightElement(BaseLightElement):
 
     def _off_trigger(self):
         self.trigger_state = 0
-        if self.bell_mode:
-            # ignore release in bell mode
-            return
         logger.debug("%s: trigger off" % self.name)
         self.adsr_envelope.trigger(state=0)
         # note can not set trigger_intensity to 0 here
@@ -150,7 +143,7 @@ class LightElement(BaseLightElement):
             self.intensity = 0.0  # reset light on trigger
             self.adsr_envelope.trigger(state=1)
             self._on_trigger()
-        elif intensity == 0 and self.trigger_state and not self.trigger_toggle:
+        elif intensity == 0 and self.trigger_state and not self.trigger_toggle and not self.bell_mode:
             self._off_trigger()
         elif intensity and self.trigger_state and self.trigger_toggle:
             self._off_trigger()
