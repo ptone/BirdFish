@@ -291,6 +291,7 @@ class Chase(LightGroup):
 
         super(Chase, self).__init__(**kwargs)
         # self.group = group
+        self.anti_alias = False
         self.center_position = 0
         self.moveto = None
         self.current_moveto = None
@@ -319,6 +320,9 @@ class Chase(LightGroup):
         self.setup_move()
 
         if self.off_mode == "all":
+            # TODO some cleanup needed - moving set to false in
+            # reset_positions, need to more clearly define between
+            # these functions what does what
             self.moving = False
             for e in self.elements:
                     # blackout
@@ -368,7 +372,12 @@ class Chase(LightGroup):
         self.move_envelope.reset()
         self.current_moveto = self.moveto
 
+    def _on_move_complete(self):
+        pass
+
     def reset_positions(self):
+        # called in association with on or off trigger
+        print 'resetting', self.center_position, self.off_mode
         if (self.off_mode == "reverse"):
             if self.center_position == self.start_pos:
                 self.moveto = self.end_pos
@@ -382,21 +391,27 @@ class Chase(LightGroup):
             self.center_position = self.last_center = self.start_pos
         self.moveto = int(self.moveto)
         self.moving = False
+        print "moveto ", self.moveto
 
     def update_position(self, show):
         if self.current_moveto != self.moveto:
             self.setup_move()
-        if self.moveto is not None and (self.center_position != self.current_moveto):
-            # this min max business is because the tween algos will overshoot
-            # TODO there is a glitch in the pulse demo where it struggles to
-            # get to the very end
-            new_position = self.move_envelope.update(show.time_delta)
-            if self.moveto > self.center_position:
-                self.center_position = min(self.moveto, new_position)
+        if self.moveto is not None:
+            if self.center_position != self.current_moveto:
+                # this min max business is because the tween algos will overshoot
+                # TODO there is a glitch in the pulse demo where it struggles to
+                # get to the very end
+                new_position = self.move_envelope.update(show.time_delta)
+                if not self.anti_alias:
+                    new_position = round(new_position)
+                if self.moveto > self.center_position:
+                    self.center_position = min(self.moveto, new_position)
+                else:
+                    self.center_position = max(self.moveto, new_position)
             else:
-                self.center_position = max(self.moveto, new_position)
-        if self.move_envelope.completed:
-            self.reset_positions()
+                # current moveto attained
+                print "current moveto attained via last update/round"
+                self.reset_positions()
 
     def update(self, show):
 
@@ -409,6 +424,12 @@ class Chase(LightGroup):
         self.render()
         for effect in self.effects:
             effect.update(show, [self])
+        if self.moving and self.move_envelope.completed:
+            # this reset should happen after the render
+            # to give the final "frame" a chance to draw itself
+            # this is not called if moveto is reached through rounding in
+            # update_position
+            self.reset_positions()
 
     def render(self):
         # TODO needs to handle reverse situations better
@@ -452,6 +473,7 @@ class Pulse(Chase):
         self.right_shape = right_shape
         self.nodes = []  # a list of element values for pulse
         self.node_range = []  # index range of current pulse
+        self.anti_alias = True
 
     def set_current_nodes(self):
         node_offset = self.center_position % 1
@@ -480,16 +502,17 @@ class Pulse(Chase):
         # pong mode:
         logger.debug("resetting-position")
         # TODO factor out into proper mode for chase
-        # TODO - for some reason envelope.completed is firing one short of end pos
-        # this is likely also the cuase for the stranded pixel on some chase modes
-
-        if self.center_position + 1 >= self.end_pos:
+        # the value is rounded as pulses are antialiased by default
+        # and center pos may not reach exactly end_pos by end of duration
+        # TODO while pulse paused at one end - this is firing multiple
+        # times
+        if round(self.center_position) == self.end_pos:
             logger.debug("%s pong-end @ %s" % (self.name, self.end_pos))
             self.moveto = self.start_pos
-            self.setup_move()
-        if self.center_position <= self.start_pos + 1:
+            # self.setup_move()
+        if round(self.center_position) == self.start_pos:
             self.moveto = self.end_pos
-            self.setup_move()
+            # self.setup_move()
 
     def update(self, show):
         super(Pulse, self).update(show)
