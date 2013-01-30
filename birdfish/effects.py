@@ -132,9 +132,10 @@ class Blink(BaseEffect):
 
     def __init__(self, frequency=2, **kwargs):
         super(Blink, self).__init__(**kwargs)
-        self.period_duration = 1.0/(2 * frequency)
+        self._frequency = frequency
         self.blinkon = True
         self.last_changed = None
+        self._set_frequency(self._frequency)
 
     def update(self, show):
         if not self.last_changed:
@@ -147,6 +148,15 @@ class Blink(BaseEffect):
             # we only modify intensity when off
             for target in self.targets:
                 target.set_intensity(0)
+
+    def _get_frequency(self):
+        return self._frequency
+
+    def _set_frequency(self, frequency):
+        self._frequency = frequency
+        self.period_duration = 1.0/(2 * self._frequency)
+
+    frequency = property(_get_frequency, _set_frequency)
 
 class Pulser(BaseEffect):
 
