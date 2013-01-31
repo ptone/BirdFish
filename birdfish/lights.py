@@ -503,27 +503,51 @@ class HitPulse(Spawner):
     def __init__(self, *args, **kwargs):
         super(HitPulse, self).__init__(*args, **kwargs)
         self.elements = []
-        self.width = 6
+        self.width = 8
+        self.network = None
 
 
     def spawn(self, center):
         pair = []
-        for op in (1, -1):
+        random_hue = random.random()
+        for rev in (True, False):
             chase = Chase(
-                    start_pos=center,
-                    end_pos=center + (op * self.width),
+                    start_pos=0,
+                    end_pos=self.width,
                     speed=.4,
                     move_tween=tween.OUT_EXPO,
                     )
-            # chase.off_mode = "reverse"
-            # chase.bell_mode = True
-            # TODO since we are re-using elements here - any change to a single
-            # element is reflected in its use of every pulse
-            # could copy just the ones used?
-            chase.elements = self.elements
+            chase.off_mode = "reverse"
+            chase.bell_mode = True
+            if rev:
+                chase.elements = self.elements[center - self.width:center]
+                chase.elements.reverse()
+            else:
+                chase.elements = self.elements[center:center + self.width]
             self.show.add_element(chase)
+            chase.elements = [deepcopy(x) for x in chase.elements]
+            for x in chase.elements:
+                self.show.add_element(x)
+                self.network.add_element(x)
+                x.hue = random_hue
             pair.append(chase)
+        pair.reverse()
         return pair
+
+    def update(self, show):
+        # remove completed items
+        remove = []
+        # return
+        for e in self.spawned:
+            if e.move_complete and not e.moving:
+                print 'removing'
+                for element in e.elements:
+                    self.show.remove_element(element)
+                    self.network.remove_element(element)
+                self.show.remove_element(e)
+                remove.append(e)
+        for e in remove:
+            self.spawned.remove(e)
 
     def trigger(self, intensity, **kwargs):
         print kwargs
