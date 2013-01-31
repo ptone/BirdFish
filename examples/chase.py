@@ -57,7 +57,7 @@ show.add_element(p)
 dispatcher.add_observer((0,70), p)
 
 
-
+# ------------------------------------------------------------------------------------------------------------------
 purple_chase = Chase(
         name="purple chase",
         start_pos=12,
@@ -88,6 +88,39 @@ show.add_element(purple_chase)
 # midi code 70 is the "M" key on the qwerty keyboard for the midikeys app
 dispatcher.add_observer((0,71), purple_chase)
 
+ # ------------------------------------------------------------------------------------------------------------------
+
+highlow = Chase(
+        name="purple chase",
+        start_pos=65,
+        end_pos=12,
+        )
+
+elementid = 0
+for i in range(1,360,3):
+    elementid += 1
+    l = RGBLight(
+            start_channel=i,
+            name="pulse_%s" % elementid,
+            attack_duration=.2,
+            decay_duration=0,
+            release_duration=0.2,
+            sustain_value=1,
+            )
+    l.hue = .1
+    l.saturation = 1
+    l.update_rgb()
+    # l.simple = True
+    # add the light to the network
+    dmx3.add_element(l)
+    highlow.elements.append(l)
+
+show.add_element(highlow)
+# set the input interface to trigger the element
+# midi code 70 is the "l" key on the qwerty keyboard for the midikeys app
+dispatcher.add_observer((0,73), highlow)
+
+ # ------------------------------------------------------------------------------------------------------------------
 follow_chase = Chase(
         name="follow chase",
         start_pos=12,
@@ -128,6 +161,7 @@ reverse_chase = Chase(
         move_tween=tween.OUT_EXPO,
         )
 reverse_chase.off_mode = "reverse"
+reverse_chase.bell_mode = True
 
 elementid = 0
 for i in range(1,360,3):
