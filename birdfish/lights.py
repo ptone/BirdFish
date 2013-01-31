@@ -460,7 +460,7 @@ class Chase(LightGroup):
             self.last_center = self.start_pos
         current_center = int(self.center_position)
         # trigger everything up to current center
-        if not self.trigger_state and self.off_mode == "reverse":
+        if self.last_center > current_center:
             [e.trigger(self.trigger_intensity) for e in self.elements[current_center:self.last_center]]
         else:
             [e.trigger(self.trigger_intensity) for e in self.elements[self.last_center:current_center]]
