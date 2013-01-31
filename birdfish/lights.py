@@ -343,7 +343,7 @@ class Chase(LightGroup):
             logger.debug("%s: chase trigger on @ %s" % (self.name, intensity))
             self.moving = True
             self.setup_move()
-        elif intensity == 0 and self.trigger_state and not self.trigger_toggle:
+        elif intensity == 0 and self.trigger_state and not self.trigger_toggle and not self.bell_mode:
             self._off_trigger()
         elif intensity and self.trigger_state and self.trigger_toggle:
             logger.info("%s: chase trigger toggle off @ %s" % (self.name, intensity))
@@ -390,6 +390,8 @@ class Chase(LightGroup):
         else:
             self.moving = False
         self.move_complete = True
+        if self.bell_mode and self.trigger_state:
+            self._off_trigger()
 
     def reset_positions(self):
         # called in association with off trigger
