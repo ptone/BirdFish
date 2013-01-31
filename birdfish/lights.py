@@ -498,6 +498,42 @@ class Spawner(object):
             new_spawn.trigger(intensity)
             self.spawned.append(new_spawn)
 
+class HitPulse(Spawner):
+
+    def __init__(self, *args, **kwargs):
+        super(HitPulse, self).__init__(*args, **kwargs)
+        self.elements = []
+        self.width = 6
+
+
+    def spawn(self, center):
+        pair = []
+        for op in (1, -1):
+            chase = Chase(
+                    start_pos=center,
+                    end_pos=center + (op * self.width),
+                    speed=.4,
+                    move_tween=tween.OUT_EXPO,
+                    )
+            # chase.off_mode = "reverse"
+            # chase.bell_mode = True
+            # TODO since we are re-using elements here - any change to a single
+            # element is reflected in its use of every pulse
+            # could copy just the ones used?
+            chase.elements = self.elements
+            self.show.add_element(chase)
+            pair.append(chase)
+        return pair
+
+    def trigger(self, intensity, **kwargs):
+        print kwargs
+        if intensity > 0:
+            key = kwargs['key'][1]
+            for new_spawn in self.spawn(center=key):
+                new_spawn.trigger(intensity)
+                self.spawned.append(new_spawn)
+
+
 class Pulse(Chase):
     """
     a cylon like moving pulse
