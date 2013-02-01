@@ -557,7 +557,7 @@ class HitPulse(Spawner):
                 new_spawn.trigger(intensity)
                 self.spawned.append(new_spawn)
 
-class BasePulse(object):
+class Pulse(object):
     """
     handles the rendering of a pulse in the abstract sense
     a range of values that change over distance
@@ -575,9 +575,9 @@ class BasePulse(object):
         self.right_shape = right_shape
         self.nodes = []  # a list of element values for pulse
         self.node_range = []  # index range of current pulse
-        self.anti_alias = True
+        self.current_position = 0
 
-    def set_current_nodes(self, center_position):
+    def set_current_nodes(self):
         """
         the node array becomes a list of values - generally for intensity
         that describes the left and right shape of the pulse around
@@ -585,12 +585,7 @@ class BasePulse(object):
 
         The node_range specifies the location start and end of the pulse overall
         """
-        if self.anti_alias:
-            self.center_position = center_position
-            node_offset = self.center_position % 1
-        else:
-            self.center_position = round(center_position)
-            node_offset = 0
+        node_offset = self.center_position % 1
         left_of_center = math.floor(self.center_position)
         far_left = int(left_of_center - self.left_width)
         self.nodes = []
@@ -613,7 +608,7 @@ class BasePulse(object):
         logger.debug(self.nodes)
 
 
-class PulseChase(Chase):
+class PulseChase(Chase, Pulse):
     """
     a cylon like moving pulse
 
@@ -633,19 +628,7 @@ class PulseChase(Chase):
             **kwargs):
 
         super(PulseChase, self).__init__(**kwargs)
-        # self.group = group
-        self.pulse = BasePulse(
-            left_width=left_width,
-            left_shape=left_shape,
-            right_width=right_width,
-            right_shape=right_shape,
-            )
-        # self.left_width = left_width
-        # self.left_shape = left_shape
-        # self.right_width = right_width
-        # self.right_shape = right_shape
-        # self.nodes = []  # a list of element values for pulse
-        # self.node_range = []  # index range of current pulse
+        Pulse.__init__(self, **kwargs)
         self.anti_alias = True
         self.continuation_mode = 'pong'
 
@@ -654,15 +637,15 @@ class PulseChase(Chase):
         logger.debug("%s Centered @ %s -> %s" % (self.name, self.center_position, self.end_pos))
 
     def render(self):
-        self.pulse.set_current_nodes(self.center_position)
+        self.set_current_nodes()
         for i, e in enumerate(self.elements):
             e.trigger(0)
-            if i in self.pulse.node_range:
+            if i in self.node_range:
                 # TODO issue here with a moving pulse:
                 # how does the element handle multiple on triggers
                 # the trigger 0 is needed otherwise the leading edge just stays
                 # dim
-                e.trigger(self.pulse.nodes[i - self.pulse.node_range[0]])
+                e.trigger(self.nodes[i - self.node_range[0]])
 
 
 class LightShow(object):
