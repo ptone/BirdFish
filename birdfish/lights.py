@@ -349,10 +349,14 @@ class Chase(LightGroup):
             logger.info("%s: chase trigger toggle off @ %s" % (self.name, intensity))
             self._off_trigger()
 
-    def setup_move(self):
+    def setup_move(self, moveto=None):
         """
         Sets up the move envelope from the current position
         """
+        if moveto:
+            # allow this to be a single method to be called
+            # by others to both set a moveto, and start the move
+            self.moveto = moveto
         # TODO need to differentiate between first move - and subsequent moves
         if not self.move_envelope:
             # TODO the tween type needs to be a settable attr on self
@@ -370,6 +374,8 @@ class Chase(LightGroup):
         self.move_envelope.reset()
         self.current_moveto = self.moveto
         self.move_complete = False
+        if self.trigger_state:
+            self.moving = True
 
     def _move_completed(self):
         print "move completed"
@@ -436,7 +442,6 @@ class Chase(LightGroup):
                 self._move_completed()
 
     def update(self, show):
-
         # always keep time delta updated
         if not self.trigger_intensity:
             if self.off_mode == "all":
