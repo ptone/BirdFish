@@ -557,29 +557,18 @@ class HitPulse(Spawner):
                 new_spawn.trigger(intensity)
                 self.spawned.append(new_spawn)
 
-
-class Pulse(Chase):
+class BasePulse(object):
     """
-    a cylon like moving pulse
-
-    center is always full on, and 0 width
-    width will then be node-node width
-    if width 3 - third node would be off when pulse squarely centered on a node
-    width == duration for tweens
-    change is always 0 to 1
+    handles the rendering of a pulse in the abstract sense
+    a range of values that change over distance
     """
     def __init__(self,
-            # group=None,
-            # TODO call super and add pulse specific kwargs extraction
-            # TODO once the kwargs settle down - make them explicit
             left_width=3,
             left_shape=tween.LINEAR,
             right_width=3,
             right_shape=tween.LINEAR,
             **kwargs):
 
-        super(Pulse, self).__init__(**kwargs)
-        # self.group = group
         self.left_width = left_width
         self.left_shape = left_shape
         self.right_width = right_width
@@ -587,10 +576,21 @@ class Pulse(Chase):
         self.nodes = []  # a list of element values for pulse
         self.node_range = []  # index range of current pulse
         self.anti_alias = True
-        self.continuation_mode = 'pong'
 
-    def set_current_nodes(self):
-        node_offset = self.center_position % 1
+    def set_current_nodes(self, center_position):
+        """
+        the node array becomes a list of values - generally for intensity
+        that describes the left and right shape of the pulse around
+        the center_position.
+
+        The node_range specifies the location start and end of the pulse overall
+        """
+        if self.anti_alias:
+            self.center_position = center_position
+            node_offset = self.center_position % 1
+        else:
+            self.center_position = round(center_position)
+            node_offset = 0
         left_of_center = math.floor(self.center_position)
         far_left = int(left_of_center - self.left_width)
         self.nodes = []
@@ -612,36 +612,58 @@ class Pulse(Chase):
         logger.debug(self.node_range)
         logger.debug(self.nodes)
 
+
+class PulseChase(Chase):
+    """
+    a cylon like moving pulse
+
+    center is always full on, and 0 width
+    width will then be node-node width
+    if width 3 - third node would be off when pulse squarely centered on a node
+    width == duration for tweens
+    change is always 0 to 1
+    """
+    def __init__(self,
+            # group=None,
+            # TODO once the kwargs settle down - make them explicit
+            left_width=3,
+            left_shape=tween.LINEAR,
+            right_width=3,
+            right_shape=tween.LINEAR,
+            **kwargs):
+
+        super(PulseChase, self).__init__(**kwargs)
+        # self.group = group
+        self.pulse = BasePulse(
+            left_width=left_width,
+            left_shape=left_shape,
+            right_width=right_width,
+            right_shape=right_shape,
+            )
+        # self.left_width = left_width
+        # self.left_shape = left_shape
+        # self.right_width = right_width
+        # self.right_shape = right_shape
+        # self.nodes = []  # a list of element values for pulse
+        # self.node_range = []  # index range of current pulse
+        self.anti_alias = True
+        self.continuation_mode = 'pong'
+
     def update(self, show):
-        super(Pulse, self).update(show)
+        super(PulseChase, self).update(show)
         logger.debug("%s Centered @ %s -> %s" % (self.name, self.center_position, self.end_pos))
 
     def render(self):
-        # if not self.nodes:
-            # self.set_current_nodes()
-        # TODO why not just iterate over nodes?
-        self.set_current_nodes()
-        self.elements[max(0, self.node_range[0] - 1)].trigger(0)
-        self.elements[min(len(self.elements) - 1, self.node_range[-1] + 1)].trigger(0)
+        self.pulse.set_current_nodes(self.center_position)
         for i, e in enumerate(self.elements):
             e.trigger(0)
-            if i in self.node_range:
-                # print i
-                # TODO problem here with a moving pulse:
-                #   how does the element handle multiple on triggers
+            if i in self.pulse.node_range:
+                # TODO issue here with a moving pulse:
+                # how does the element handle multiple on triggers
                 # the trigger 0 is needed otherwise the leading edge just stays
                 # dim
-                e.trigger(self.nodes[i - self.node_range[0]])
+                e.trigger(self.pulse.nodes[i - self.pulse.node_range[0]])
 
-# @@ EffectChase
-# an subclass of chase that moves an effect(s) along a set of elements
-#  should have a way of keeping a list of transient
-    # or completable effects in a stack, and clear them out when done.
-
-# @@ Need a ChaseGenerator/Manager/Coordinator
-# would create a chase, potentially varying some parameters (ie start and end
-# or duration) and would trigger it regularly or randomly.  can be used to
-# create regular water drips, or drifting snow effects
 
 class LightShow(object):
 
