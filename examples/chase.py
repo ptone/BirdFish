@@ -115,6 +115,8 @@ for i in range(1,360,3):
     dmx3.add_element(l)
     highlow.elements.append(l)
 
+highlow.off_mode = "reverse"
+highlow.bell_mode = True
 show.add_element(highlow)
 # set the input interface to trigger the element
 # midi code 70 is the "l" key on the qwerty keyboard for the midikeys app
