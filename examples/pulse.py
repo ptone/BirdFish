@@ -2,7 +2,7 @@ import sys
 
 from birdfish.input.midi import MidiDispatcher
 from birdfish.input.osc import OSCDispatcher
-from birdfish.lights import RGBLight, Pulse, LightShow
+from birdfish.lights import RGBLight, PulseChase, LightShow
 from birdfish.output.lumos_network import LumosNetwork
 from birdfish import tween
 
@@ -21,7 +21,7 @@ dispatcher = MidiDispatcher("MidiKeys")
 osc_dispatcher = OSCDispatcher(('0.0.0.0', 8998))
 
 
-p = Pulse(name="greenpulse",
+p = PulseChase(name="greenpulse",
         start_pos=12,
         end_pos=65,
         speed=3,

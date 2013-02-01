@@ -1,7 +1,7 @@
 import sys
 
 from birdfish.input.midi import MidiDispatcher
-from birdfish.lights import RGBLight, Pulse, LightShow
+from birdfish.lights import RGBLight, PulseChase, LightShow
 from birdfish.output.lumos_network import LumosNetwork
 from birdfish import tween
 
@@ -19,7 +19,7 @@ show.networks.append(dmx3)
 dispatcher = MidiDispatcher("MidiKeys")
 
 
-p = Pulse(name="greenpulse",
+p = PulseChase(name="greenpulse",
         start_pos=12,
         end_pos=65,
         speed=3,
@@ -57,7 +57,7 @@ p.trigger_toggle = True
 
 show.add_element(p)
 
-pp = Pulse(name="otherpulse",
+pp = PulseChase(name="otherpulse",
         start_pos=12,
         end_pos=65,
         speed=5,
