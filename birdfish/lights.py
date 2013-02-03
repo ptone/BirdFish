@@ -302,6 +302,8 @@ class Chase(LightGroup):
         self.off_mode = "all"
         self.continuation_mode = None
         self.move_complete = False
+        self.sweep = True
+        self.width = 1
 
     def _off_trigger(self):
         self.trigger_state = 0
@@ -425,6 +427,8 @@ class Chase(LightGroup):
         if self.current_moveto != self.moveto:
             self.setup_move()
         if self.moveto is not None:
+            # TODO - this check of current postion to moveto will not make
+            # sense in an elastic or bounce circumstance
             if round(self.center_position) != self.current_moveto:
                 # this min max business is because the tween algos will overshoot
                 # TODO there is a glitch in the pulse demo where it struggles to
@@ -438,7 +442,7 @@ class Chase(LightGroup):
                     self.center_position = max(self.moveto, new_position)
             else:
                 # current moveto attained
-                print "current moveto attained via last update/round"
+                logger.debug("current moveto attained via last update/round")
                 self._move_completed()
 
     def update(self, show):
@@ -464,12 +468,19 @@ class Chase(LightGroup):
         if self.last_center is None:
             self.last_center = self.start_pos
         current_center = int(self.center_position)
-        # trigger everything up to current center
-        if self.last_center > current_center:
-            [e.trigger(self.trigger_intensity) for e in self.elements[current_center:self.last_center]]
+        if self.sweep:
+            # trigger everything up to current center
+            if self.last_center > current_center:
+                [e.trigger(self.trigger_intensity) for e in self.elements[current_center:self.last_center]]
+            else:
+                [e.trigger(self.trigger_intensity) for e in self.elements[self.last_center:current_center]]
         else:
-            [e.trigger(self.trigger_intensity) for e in self.elements[self.last_center:current_center]]
-        # self.elements[int(self.center_position)].trigger(self.trigger_intensity)
+            # trigger only the width
+            [e.trigger(0) for e in self.elements]
+            if self.last_center > current_center:
+                [e.trigger(self.trigger_intensity) for e in self.elements[current_center:(current_center + self.width)]]
+            else:
+                [e.trigger(self.trigger_intensity) for e in self.elements[current_center - self.width:current_center]]
         self.last_center = current_center
 
 class Spawner(object):
@@ -557,6 +568,8 @@ class HitPulse(Spawner):
     def trigger(self, intensity, **kwargs):
         print kwargs
         if intensity > 0:
+            # TODO need input range
+            # key = kwargs['key'][1] - 50
             key = kwargs['key'][1]
             for new_spawn in self.spawn(center=key):
                 new_spawn.trigger(intensity)
