@@ -392,8 +392,9 @@ class Chase(LightGroup):
             if round(self.center_position) == self.start_pos:
                 self.moveto = self.end_pos
         elif self.continuation_mode == 'loop':
-            # TODO
-            self.center_position = self.start_pos
+            # TODO the last_center reset is an easy one to miss, and should
+            # be built into something else
+            self.last_center = self.center_position = self.start_pos
             self.setup_move()
         else:
             self.moving = False
