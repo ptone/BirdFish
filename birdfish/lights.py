@@ -120,7 +120,7 @@ class LightElement(BaseLightElement):
         # mostly to be overridden by subclasses
         self.intensity = intensity
 
-    def _on_trigger(self):
+    def _on_trigger(self, intensity, **kwargs):
         pass
 
     def _off_trigger(self):
@@ -143,7 +143,7 @@ class LightElement(BaseLightElement):
             logger.debug("%s: trigger on @ %s" % (self.name, intensity))
             self.intensity = 0.0  # reset light on trigger
             self.adsr_envelope.trigger(state=1)
-            self._on_trigger()
+            self._on_trigger(intensity, **kwargs)
         elif intensity == 0 and self.trigger_state and not self.trigger_toggle and not self.bell_mode:
             self._off_trigger()
         elif intensity and self.trigger_state and self.trigger_toggle:
@@ -345,6 +345,7 @@ class Chase(LightGroup):
             logger.debug("%s: chase trigger on @ %s" % (self.name, intensity))
             self.moving = True
             self.setup_move()
+            self._on_trigger(intensity, **kwargs)
         elif intensity == 0 and self.trigger_state and not self.trigger_toggle and not self.bell_mode:
             self._off_trigger()
         elif intensity and self.trigger_state and self.trigger_toggle:
