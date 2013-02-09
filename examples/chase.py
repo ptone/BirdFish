@@ -22,6 +22,52 @@ show.networks.append(dmx3)
 dispatcher = MidiDispatcher("MidiKeys")
 
 
+
+
+
+simple = Chase(name="simplechase")
+elementid = 0
+for i in range(1,360,3):
+    elementid += 1
+    l = RGBLight(
+            start_channel=i,
+            name="item_%s" % elementid,
+            attack_duration=0,
+            decay_duration=0,
+            release_duration=0,
+            sustain_value=1,
+            )
+    l.hue = .59
+    l.saturation = 1
+    l.update_rgb()
+    l.bell_mode = True
+    # l.simple = True
+    # add the light to the network
+    dmx3.add_element(l)
+    simple.elements.append(l)
+
+
+simple.start_pos = 12
+# p.left_width = p.right_width = 10
+simple.speed = .5
+simple.moveto = simple.end_pos = 65
+# simple.continuation_mode = 'loop'
+# simple.trigger_toggle = True
+simple.sweep = False
+simple.width = 3
+
+show.add_element(simple)
+# set the input interface to trigger the element
+# midi code 70 is the "V" key on the qwerty keyboard for the midikeys app
+dispatcher.add_observer((0,65), simple)
+
+
+
+
+
+
+
+
 p = Chase(name="bluechase")
 elementid = 0
 for i in range(1,360,3):
@@ -57,7 +103,7 @@ show.add_element(p)
 dispatcher.add_observer((0,70), p)
 
 
-# ------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 purple_chase = Chase(
         name="purple chase",
         start_pos=12,
@@ -88,7 +134,7 @@ show.add_element(purple_chase)
 # midi code 70 is the "M" key on the qwerty keyboard for the midikeys app
 dispatcher.add_observer((0,71), purple_chase)
 
- # ------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 highlow = Chase(
         name="purple chase",
@@ -122,7 +168,7 @@ show.add_element(highlow)
 # midi code 70 is the "l" key on the qwerty keyboard for the midikeys app
 dispatcher.add_observer((0,73), highlow)
 
- # ------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 follow_chase = Chase(
         name="follow chase",
         start_pos=12,
