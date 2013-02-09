@@ -428,23 +428,7 @@ class Chase(LightGroup):
         if self.current_moveto != self.moveto:
             self.setup_move()
         if self.moveto is not None:
-            # TODO - this check of current postion to moveto will not make
-            # sense in an elastic or bounce circumstance
-            if round(self.center_position) != self.current_moveto:
-                # this min max business is because the tween algos will overshoot
-                # TODO there is a glitch in the pulse demo where it struggles to
-                # get to the very end
-                new_position = self.move_envelope.update(show.time_delta)
-                if not self.anti_alias:
-                    new_position = round(new_position)
-                if self.moveto > self.center_position:
-                    self.center_position = min(self.moveto, new_position)
-                else:
-                    self.center_position = max(self.moveto, new_position)
-            else:
-                # current moveto attained
-                logger.debug("current moveto attained via last update/round")
-                self._move_completed()
+                self.center_position = self.move_envelope.update(show.time_delta)
 
     def update(self, show):
         # always keep time delta updated
