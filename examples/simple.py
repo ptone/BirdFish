@@ -30,7 +30,7 @@ single = LightElement(
         )
 
 # add the light to a network
-dmx3.add_element(single)
+show.add_element(single, network=dmx3)
 
 # set the input interface to trigger the element
 # midi code 41 is the "Q" key on the qwerty keyboard for the midikeys app

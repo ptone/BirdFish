@@ -20,10 +20,6 @@ class BaseNetwork(object):
     def reset(self):
         self.data = array.array('B', (0,) * len(self.data))
 
-    def update(self,show):
-        for e in self.elements:
-            e.update(show)
-
     def add_element(self, element):
         if element not in self.elements:
             self.elements.append(element)
@@ -32,7 +28,11 @@ class BaseNetwork(object):
         # element.network=self? will this ever be needed?
 
     def remove_element(self, element):
-        self.elements.remove(element)
+        try:
+            self.elements.remove(element)
+            return True
+        except ValueError:
+            return False
 
     def get_named_element(self,name):
         for l in self.elements:

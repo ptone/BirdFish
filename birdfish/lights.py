@@ -25,15 +25,13 @@ from birdfish.log_setup import logger
 # print logger
 
 
-class BaseLightElement(object):
-    """docstring for BaseLightElement"""
+class LightingNetworkElement(object):
+    """This item represents an element that provides channel data"""
 
     def __init__(self, start_channel=1, *args, **kwargs):
         self.name = kwargs.get('name', "baselight")
         # signal intensity is the value set by the note on velocity -
         # does not reflect current brightness
-        self.trigger_intensity = 0.0
-        self.intensity = 0.0
         self.channels = {}
 
         self.channels[start_channel] = 'intensity'
@@ -63,11 +61,16 @@ class BaseLightElement(object):
             # = max (dmx_val,dmx[channel-1]) #zero index adjust??
             # currently this brightest wins is done by zero out the data
 
-class LightElement(BaseLightElement):
+class BaseLightElement(object):
+    """
+    This class handles trigger events, and is updated with the show timeline
+    """
+
+    # TODO need to factor the ADSR related parts out of this class
 
     def __init__(self, *args, **kwargs):
-        super(LightElement, self).__init__(*args, **kwargs)
         self.trigger_intensity = 0.0
+        self.intensity = 0.0
         self.universe = 1
         self.bell_mode = False
         self.name = kwargs.get("name", "unnamed_LightElement")
@@ -163,6 +166,14 @@ class LightElement(BaseLightElement):
         """convenience for off"""
         self.trigger(0.0)
 
+class LightElement(BaseLightElement, LightingNetworkElement):
+    """
+    This is a composed class that represents a basic light that has both
+    behaviors and channel data
+    """
+    def __init__(self, *args, **kwargs):
+        BaseLightElement.__init__(self, *args, **kwargs)
+        LightingNetworkElement.__init__(self, *args, **kwargs)
 
 class RGBLight(LightElement):
     RED = (1, 0, 0)
@@ -238,7 +249,7 @@ class RGBLight(LightElement):
     hue = property(_get_hue, _set_hue)
     saturation = property(_get_saturation, _set_saturation)
 
-class LightGroup(LightElement):  # TODO why base light element, and not light element?
+class LightGroup(BaseLightElement):  # TODO why base light element, and not light element?
     """A collection of light Elements triggered in collectively in some form"""
     def __init__(self, *args, **kwargs):
         super(LightGroup, self).__init__(*args, **kwargs)
@@ -432,6 +443,7 @@ class Chase(LightGroup):
                 self.center_position = self.move_envelope.update(show.time_delta)
 
     def update(self, show):
+        super(Chase, self).update(show)
         # always keep time delta updated
         if not self.trigger_intensity:
             if self.off_mode == "all":
@@ -677,20 +689,23 @@ class LightShow(object):
         self.recent_frames = deque()
         self.average_framerate = self.frame_delay
         self.frame = 0
+        self.elements = []
 
     def add_element(self, element, network=None):
         if network:
             network.add_element(element)
             if network not in self.networks:
-                return self.networks.append(network)
-        else:
-            return self.default_network.add_element(element)
+                self.networks.append(network)
+        self.elements.append(element)
 
     def remove_element(self, element, network=None):
-        if network:
+        for network in self.networks:
             network.remove_element(element)
-        else:
-            return self.default_network.remove_element(element)
+        try:
+            self.elements.remove(element)
+            return True
+        except ValueError:
+            return False
 
     def blackout(self):
         for n in self.networks:
@@ -771,7 +786,7 @@ class LightShow(object):
     def update(self):
         """The main show update command"""
         self.scenemanager.update(self)
-        for n in self.networks:
-            n.update(self)
+        for element in self.elements:
+            element.update(self)
         for e in self.effects:
             e.update(self)

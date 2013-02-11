@@ -33,7 +33,7 @@ single = RGBLight(
 single.saturation = 1
 
 # add the light to a network
-dmx3.add_element(single)
+show.add_element(single, network=dmx3)
 
 cshift = ColorShift()
 cshift.add_hue_shift(start=.5, end=.7, duration=4)

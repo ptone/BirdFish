@@ -39,7 +39,7 @@ for i in range(1,180,3):
     l.update_rgb()
     # l.simple = True
     # add the light to the network
-    dmx3.add_element(l)
+    show.add_element(l, network=dmx3)
     p.elements.append(l)
     e = Twinkle()
     e.targets.append(l)

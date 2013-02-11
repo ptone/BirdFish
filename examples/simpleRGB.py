@@ -24,10 +24,10 @@ osc_dispatcher = OSCDispatcher(('0.0.0.0', 8998))
 single = RGBLight(
         start_channel=10,
         name="singletestb",
-        attack_duration=0.5,
-        decay_duration=1.5,
-        release_duration=0,
-        sustain_value=0,
+        attack_duration=0,
+        decay_duration=0,
+        release_duration=.75,
+        sustain_value=1,
         )
 single.hue = random.random()
 single.saturation = 1
@@ -37,23 +37,24 @@ single.bell_mode = True
 oscsingle = RGBLight(
         start_channel=91,
         name="singletestb",
-        attack_duration=0.5,
+        attack_duration=0,
         decay_duration=0,
-        release_duration=0,
+        release_duration=.75,
         sustain_value=1,
         )
+
 oscsingle.hue = random.random()
 oscsingle.saturation = 1
 oscsingle.update_rgb()
 
 
 # add the light to a network
-dmx3.add_element(single)
-dmx3.add_element(oscsingle)
+show.add_element(single, network=dmx3)
+show.add_element(oscsingle, network=dmx3)
 
 # set the input interface to trigger the element
 # midi code 41 is the "Q" key on the qwerty keyboard for the midikeys app
-dispatcher.add_observer((0,41),single)
+dispatcher.add_observer((0, 41),single)
 osc_dispatcher.add_trigger('/2/toggle2', oscsingle)
 osc_dispatcher.add_map('/2/fader2', oscsingle, 'hue')
 osc_dispatcher.add_map('/elements/fader1', oscsingle, 'saturation', in_range=(0,4))

@@ -30,7 +30,7 @@ single = LightElement(
         )
 
 # add the light to a network
-dmx3.add_element(single)
+show.add_element(single, network=dmx3)
 
 # the effect is configured by how many times it should pulse per second
 # 1 is the default

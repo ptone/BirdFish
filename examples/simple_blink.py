@@ -27,7 +27,7 @@ single = LightElement(
         )
 
 # add the light to a network
-dmx3.add_element(single)
+show.add_element(single, network=dmx3)
 
 # a blinker is configured by how many times it should blink per second
 # 2 is the default

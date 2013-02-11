@@ -42,6 +42,7 @@ for i in range(1,360,3):
     pixels.elements.append(l)
 
 doors = LightGroup()
+show.add_element(doors)
 
 for i in range(10, 80, 10):
     simple = Chase(name="simplechase")
