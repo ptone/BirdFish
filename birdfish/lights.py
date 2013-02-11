@@ -242,40 +242,40 @@ class LightGroup(LightElement):  # TODO why base light element, and not light el
     """A collection of light Elements triggered in collectively in some form"""
     def __init__(self, *args, **kwargs):
         super(LightGroup, self).__init__(*args, **kwargs)
-        self.elements = []
+        self.elements = kwargs.get('elements', [])
         self.name = kwargs.get("name", "lightgroup")
-        self.trigger_mode = kwargs.get("trigger_mode", "sustain")
-        e = kwargs.get("elements", [])
-        if e:
-            # make a copy of the values
-            self.elements = list(e)
-        self.intensity_overide = 0
-        self.intensity = 1.0
-        # logger = logging.getLogger("%s.%s.%s" % (__name__, "LightGroup", self.name))
-        self.trigger_state = 0  # TODO ie this could go away if this was subclassed differently
-
-    # @@ problematic - problems with __init__ in base classes:
-    # def __setattr__(self,key,val):
-    #     local_keys = ['name','intensity_overide','element_initialize','elements']
-    #     if key in local_keys:
-    #         self.__dict__[key] = val
-    #     else:
-    #         for l in self.elements:
-    #             setattr(l,key,val)
+        self.max_intensity = 1.0
+        self.update_active = False
 
     def trigger(self, sig_intensity, **kwargs):
         if sig_intensity:
-            intensity = self.intensity_overide or sig_intensity
+            intensity = min(self.max_intensity, sig_intensity)
             [x.trigger(intensity) for x in self.effects]
+            self.trigger_state = 1
+            self.update_active = True
         else:
-            intensity = 0
-            [x.trigger(0) for x in self.effects]
-        for l in self.elements:
-            l.trigger(intensity)
+            self.trigger_state = 0
+            intensity = 0.0
+        [x.trigger(intensity) for x in self.effects]
+        [l.trigger(intensity) for l in self.elements]
 
     def set_intensity(self, intensity):
         # the group element always has a pseudo-intensity of 1
         [e.set_intensity(e.intensity * intensity) for e in self.elements]
+
+    def update(self, show):
+        if self.trigger_state or self.update_active:
+            elements_active = False
+            for element in self.elements:
+                element.update(show)
+                # determine if any elements are still active - ie in release
+                elements_active = elements_active or element.trigger_intensity
+            # set our own active state based on whether
+            # any element is still active
+            self.update_active = elements_active
+
+
+    # TODO could have hue, saturation and other basic property passthrough?
 
 
 class Chase(LightGroup):
