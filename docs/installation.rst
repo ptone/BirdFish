@@ -30,7 +30,14 @@ terminal)::
     curl -O https://raw.github.com/pypa/pip/master/contrib/get-pip.py
     sudo python get-pip.py
     sudo pip install -U virtualenv
-    pip install -U virtualenvwrapper
+    sudo pip install -U virtualenvwrapper
+
+To finish the installation of the virtualenv wrapper tool, you will need to add
+these three lines to your .bashrc file in the root of your home folder.::
+
+    export WORKON_HOME=$HOME/.virtualenvs
+    export PROJECT_HOME=$HOME/Devel
+    source /usr/local/bin/virtualenvwrapper.sh
 
 Now you need to make a Python virtualenvironment to execute the BirdFish code::
 
@@ -41,9 +48,9 @@ Now you need to make a Python virtualenvironment to execute the BirdFish code::
     pip install -e git+https://github.com/ptone/pyosc.git#egg=pyOSC-dev
 
 BirdFish is the main control software package, protomidi is the Python bindings
-to the PortMidi which makes your systems Midi infrastructure available, and
-Lumos is a library for sending E1.31. pyOSC is a Python implementation of the
-OSC command protocol.
+to the PortMidi library which makes your system's Midi infrastructure
+available, and Lumos is a library for sending E1.31. pyOSC is a Python
+implementation of the OSC command protocol.
 
 Download a small virtual midi keyboard called `MidiKeys
 <http://www.manyetas.com/creed/midikeys.html>`_
