@@ -11,8 +11,8 @@ Contents:
 .. toctree::
     :maxdepth: 2
 
-    installation
     introduction
+    installation
     tutorial
     input_output
     reference
