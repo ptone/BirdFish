@@ -1,3 +1,5 @@
+import warnings
+
 import tween
 from birdfish.log_setup import logger
 
@@ -395,3 +397,77 @@ class ADSREnvelope(TriggeredEnvelope):
         self.off_envelope = Envelope(label="off-envelope")
         self.off_envelope.segments.append(self.release_envelope)
         self.segments = [self.on_envelope, self.off_envelope]
+
+class ColorEnvelope(object):
+    """
+    Manages a set of envelopes in parallel related to color change
+    """
+    # TODO notes:
+    # how does it handle the existing color of an element
+    # can I handle explicit start color, or take current color and shift both
+    # can we reset the color to the original?
+    #
+    def __init__(self, **kwargs):
+        self.hue_envelope = Envelope(loop=-1)
+        self.saturation_envelope = Envelope(loop=-1)
+        self.intensity_envelope = Envelope(loop=-1)
+
+    def _add_shift(self, start, end, duration, shape, envelope):
+        if envelope is not None:
+            change = end - start
+            seg = EnvelopeSegment(
+                    start=start,
+                    change=change,
+                    duration=duration,
+                    tween=shape,
+                    )
+            envelope.segments.append(seg)
+        else:
+            warnings.warn("Envelope disabled")
+
+    def add_hue_shift(self, start=0, end=1, duration=5, shape=tween.LINEAR):
+        self._add_shift(start, end, duration, shape, self.hue_envelope)
+
+    def add_saturation_shift(self, start=0, end=1, duration=5, shape=tween.LINEAR):
+        self._add_shift(start, end, duration, shape, self.saturation_envelope)
+
+    def add_intensity_shift(self, start=0, end=1, duration=5, shape=tween.LINEAR):
+        self._add_shift(start, end, duration, shape, self.intensity_envelope)
+
+    def _color_update(self, time_delta):
+        # if any of the shift envelopes have been disabled by being set to None
+        # return None for those values
+        if self.hue_envelope:
+            hue = self.hue_envelope.update(time_delta)
+        else:
+            hue = None
+        if self.saturation_envelope:
+            sat = self.saturation_envelope.update(time_delta)
+        else:
+            sat = None
+        if self.intensity_envelope:
+            intensity = self.intensity_envelope.update(time_delta)
+        else:
+            intensity = None
+        return (hue, sat, intensity)
+
+    def update(self, time_delta):
+        return self._color_update(time_delta)
+
+    def reset(self):
+        for env in [self.hue_envelope, self.saturation_envelope, self.intensity_envelope]:
+            if env is not None:
+                env.reset()
+
+    @property
+    def duration(self):
+        hue_duration = sat_duration = int_duration = 0
+        if self.hue_envelope:
+            hue_duration = self.hue_envelope.duration
+        if self.saturation_envelope:
+            sat_duration = self.saturation_envelope.duration
+        if self.intensity_envelope:
+            int_duration = self.intensity_envelope.duration
+        # TODO should we ensure they are all equal, could result in some
+        # funky rendering if one is looping differently - maybe that is not bad
+        return max(hue_duration, sat_duration, int_duration)
