@@ -32,9 +32,15 @@ terminal)::
     sudo pip install -U virtualenv
     sudo pip install -U virtualenvwrapper
 
-To finish the installation of the virtualenv wrapper tool, you will need to add
-these three lines to your .bashrc file in the root of your home folder.::
+To finish the installation of the virtualenv wrapper tool, you will need to
+modify your shell environment. Open you .bash_profile file::
 
+    touch ~/.bash_profile
+    open -a textedit ~/.bash_profile
+
+add these three lines to your .bashrc file in the root of your home folder.::
+
+    export PATH=/usr/local/bin:/usr/local/sbin:$PATH
     export WORKON_HOME=$HOME/.virtualenvs
     export PROJECT_HOME=$HOME/Devel
     source /usr/local/bin/virtualenvwrapper.sh
@@ -42,9 +48,9 @@ these three lines to your .bashrc file in the root of your home folder.::
 Now you need to make a Python virtualenvironment to execute the BirdFish code::
 
     mkvirtualenv birdfish
-    pip install -e git+git@github.com:ptone/BirdFish.git#egg=birdfish-dev
-    pip install -e git+git@github.com:ptone/protomidi.git#egg=protomidi-dev
-    pip install -e git+git@github.com:ptone/Lumos.git#egg=lumos-dev
+    pip install -e git+https://github.com/ptone/BirdFish.git#egg=birdfish-dev
+    pip install -e git+https://github.com/ptone/protomidi.git#egg=protomidi-dev
+    pip install -e git+https://github.com/ptone/Lumos.git#egg=lumos-dev
     pip install -e git+https://github.com/ptone/pyosc.git#egg=pyOSC-dev
 
 BirdFish is the main control software package, protomidi is the Python bindings
