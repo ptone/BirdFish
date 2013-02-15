@@ -32,7 +32,7 @@ class AudioPlayer(threading.Thread):
                         output = True)
 
     def __init__(self,wavfile):
-        threading.Thread.__init__(self, name="midireader")
+        threading.Thread.__init__(self, name="audioplayer")
         self._stopevent = threading.Event()
         self.wavfile = wavfile
         self.pyaudio = p = pyaudio.PyAudio()
