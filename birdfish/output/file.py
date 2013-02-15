@@ -13,10 +13,12 @@ class EventWriter(object):
             raise ValueError("File Already Exists")
             # @@ could increment filename instead
         self.file = file
-        self.writer = csv.writer(open(file,'wb'))
+        self.writer = csv.writer(open(file, 'wb'))
 
 
-    def log_event(self,object,type,data,attr=None):
+    def log_event(self,object,type,data,attr=None, timing=None):
+        if timing is None:
+            timing = time.time()
         if object.name == "":
             raise ValueError("Unamed object can not be recorded")
         print object.name, type
@@ -24,4 +26,4 @@ class EventWriter(object):
             label = "%s.%s" % (object.name, attr)
         else:
             label = object.name
-        self.writer.writerow([type,label,data,time.time()])
+        self.writer.writerow([type, label, data, timing])
