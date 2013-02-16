@@ -11,6 +11,9 @@ d = total duration
 
 import math
 
+def STATIC(t, b, c, d):
+    return b
+
 def OUT_EXPO(t, b, c, d ):
     return b+c if (t==d) else c * (-2**(-10 * t/d) + 1) + b
 
