@@ -16,14 +16,15 @@ class EventWriter(object):
         self.writer = csv.writer(open(file, 'wb'))
 
 
-    def log_event(self,object,type,data,attr=None, timing=None):
+    def log_event(self, type='t', data='1', object=None, label=None, attr=None, timing=None):
         if timing is None:
             timing = time.time()
-        if object.name == "":
-            raise ValueError("Unamed object can not be recorded")
-        print object.name, type
-        if attr:
-            label = "%s.%s" % (object.name, attr)
-        else:
-            label = object.name
+        if label is None:
+            if object.name == "":
+                raise ValueError("Unamed object can not be recorded")
+            print object.name, type
+            if attr:
+                label = "%s.%s" % (object.name, attr)
+            else:
+                label = object.name
         self.writer.writerow([type, label, data, timing])

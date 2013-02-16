@@ -35,10 +35,13 @@ class EventReader(threading.Thread):
             if m == self.song_start:
                 self.start_offset = float(event[3]) #ms timestamp of event
                 self.started = time.time()
+                if hasattr(self.show, 'audio_player'):
+                    self.show.audio_player.start()
                 print self.start_offset
 
     def run(self):
         print "%s starts" % (self.getName(),)
+        #TODO self.run_started and self.started seem redundant and may not be needed?
         self.run_started = time.time()
         self.seek_start()
         while not self._stopevent.is_set():
@@ -81,7 +84,7 @@ class EventReader(threading.Thread):
                     setattr(lightobj,attr,int(self.pending_event[2]))
                 self.pending_event = None
             else:
-                self._stopevent.wait(.7)
+                self._stopevent.wait(.1)
         print "%s ends" % (self.getName(),)
         self.cleanup()
 
