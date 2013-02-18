@@ -474,7 +474,7 @@ class Chase(LightGroup):
         else:
             # trigger only the width
             [e.trigger(0) for e in self.elements]
-            if self.last_center > current_center:
+            if current_center > self.moveto:
                 [e.trigger(self.trigger_intensity) for e in self.elements[current_center:(current_center + self.width)]]
             else:
                 [e.trigger(self.trigger_intensity) for e in self.elements[current_center - self.width:current_center]]
