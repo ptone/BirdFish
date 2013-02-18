@@ -5,6 +5,7 @@ from collections import deque
 from copy import deepcopy
 import colorsys
 import threading
+import warnings
 # from ola.OlaClient import OlaClient, Universe
 # import client_wrapper
 import time
@@ -759,7 +760,7 @@ class LightShow(object):
             if discrepancy > .01:
                 self.frame_delay += .01
                 if discrepancy > .3:
-                    print "Warning - slow refresh"
+                    warnings.warn("Slow refresh")
             elif discrepancy < -.01 and self.frame_delay > 1/self.frame_rate:
                 # we can speed back up
                 self.frame_delay -= .01
