@@ -26,13 +26,25 @@ class BaseEffect(BaseLightElement):
             self.trigger_state = 0
         else:
             self.trigger_state = 1
+        self.envelope_filters = []
 
     def filter_targets(self, targets):
         """
         subclasses can override to provide some behavior that limits
         the effect only to some targets, or targets in some state
         """
-        return targets
+        # TODO may need to rething to make it easier to add filters
+        # and or reuse this adsr stuff
+        if targets and self.envelope_filters:
+            filtered_targets = []
+            for target in targets:
+                if hasattr(target, 'adsr_envelope'):
+                    label = target.adsr_envelope.get_current_segment().label
+                    if label in self.envelope_filters:
+                        filtered_targets.append(target)
+            return filtered_targets
+        else:
+            return targets
 
     def get_targets(self, targets):
         if not targets:
