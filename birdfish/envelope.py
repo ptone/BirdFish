@@ -427,6 +427,10 @@ class ColorEnvelope(object):
         else:
             warnings.warn("Envelope disabled")
 
+    def set_loop(self, loop):
+        for env in (self.hue_envelope, self.saturation_envelope, self.intensity_envelope):
+            env.loop = loop
+
     def add_hue_shift(self, start=0, end=1, duration=5, shape=tween.LINEAR):
         self._add_shift(start, end, duration, shape, self.hue_envelope)
 
