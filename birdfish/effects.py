@@ -27,6 +27,20 @@ class BaseEffect(BaseLightElement):
         else:
             self.trigger_state = 1
 
+    def filter_targets(self, targets):
+        """
+        subclasses can override to provide some behavior that limits
+        the effect only to some targets, or targets in some state
+        """
+        return targets
+
+    def get_targets(self, targets):
+        if not targets:
+            targets = self.targets
+        elif isinstance(targets, LightElement):
+            targets = [targets]
+        return self.filter_targets(targets)
+
     def trigger(self, intensity, **kwargs):
         if intensity:
             self.trigger_state = 1
@@ -47,10 +61,7 @@ class ColorShift(BaseEffect, ColorEnvelope):
 
     def update(self, show, targets=None):
         if self.trigger_state:
-            if not targets:
-                targets = self.targets
-            elif isinstance(targets, LightElement):
-                targets = [targets]
+            targets = self.get_targets(targets)
             hue, sat, intensity = self._color_update(show.time_delta)
             for target in targets:
                 if hue is not None:
@@ -88,13 +99,13 @@ class Twinkle(BaseEffect):
         # note, currently can not easily assign a twinkle to an elements effects
         # array - must add it to the show directly as it uses the trigger method
         # this is true of any effect that uses trigger method of elements for
-        # rendering the effect
+        # rendering the effect - basically an effect can not be piggy-backed on
+        # an elements trigger, if it is to use trigger to cause/manage the effect
+        # perhaps an effect should always manipulate the lower level attributes
+        # instead of using a trigger
         self.trigger_state = 1
         if self.trigger_state:
-            if not targets:
-                targets = self.targets
-            elif isinstance(targets, LightElement):
-                targets = [targets]
+            targets = self.get_targets(targets)
             self.cycle_elapsed += show.time_delta
             if self.cycle_elapsed > self.durations[self.blinkon]:
                 # current cycle complete
@@ -124,7 +135,8 @@ class Blink(BaseEffect):
         self.last_changed = None
         self._set_frequency(self._frequency)
 
-    def update(self, show):
+    def update(self, show, targets=None):
+        targets = self.get_targets(targets)
         if not self.last_changed:
             self.last_changed = show.timecode
             return
@@ -133,7 +145,7 @@ class Blink(BaseEffect):
             self.last_changed = show.timecode
         if not self.blinkon:
             # we only modify intensity when off
-            for target in self.targets:
+            for target in targets:
                 target.set_intensity(0)
 
     def _get_frequency(self):
@@ -161,10 +173,7 @@ class Pulser(BaseEffect):
 
     def update(self, show, targets=None):
         if self.trigger_state:
-            if not targets:
-                targets = self.targets
-            elif isinstance(targets, LightElement):
-                targets = [targets]
+            targets = self.get_targets(targets)
             val = self.envelope.update(show.time_delta)
             for target in targets:
                 target.set_intensity(val * target.intensity)
