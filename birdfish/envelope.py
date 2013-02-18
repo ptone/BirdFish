@@ -89,6 +89,9 @@ class EnvelopeSegment(object):
         # current profile in effect
         return self.profile
 
+    def get_current_segment(self):
+        return self
+
     @property
     def duration(self):
         return self.profile.duration
@@ -153,11 +156,11 @@ class Envelope(EnvelopeSegment):
 
     def get_profile(self):
         logger.debug("Envelop %s profile property, index: %s" % (self.label, self.index))
-        if self.segments:
-            return self.segments[self.index].get_profile()
-        elif hasattr(self, 'profile'):
-            return self.profile
-        raise RuntimeError("profile not available")
+        end_segment = self.get_current_segment()
+        return end_segment.profile
+
+    def get_current_segment(self):
+        return self.segments[self.index].get_current_segment()
 
     def start(self):
         pass
