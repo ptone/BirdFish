@@ -154,10 +154,7 @@ class Envelope(EnvelopeSegment):
     def get_profile(self):
         logger.debug("Envelop %s profile property, index: %s" % (self.label, self.index))
         if self.segments:
-            return self.segments[self.index].profile
-        # TODO something is wrong with the logic here
-        # as this is not truely recursing, do segments need a get_profile
-        # and would a subclass ever have a profile attr on self?
+            return self.segments[self.index].get_profile()
         elif hasattr(self, 'profile'):
             return self.profile
         raise RuntimeError("profile not available")
