@@ -102,7 +102,7 @@ class BaseLightElement(object):
         if self.adsr_envelope.advancing:
             intensity_scale = self.adsr_envelope.update(show.time_delta)
             self.set_intensity(self.trigger_intensity * intensity_scale)
-        else:
+        elif self.trigger_intensity:
             logger.debug(self.name)
             logger.debug('not advancing, intensity: {}'.format(self.intensity))
             self.trigger_intensity = 0.0
