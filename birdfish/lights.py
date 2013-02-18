@@ -392,12 +392,10 @@ class Chase(LightGroup):
             self.moving = True
 
     def _move_completed(self):
-        print "move completed"
         # called at the end of a move, for looping, pong, etc
         # TODO while pulse paused at one end - this is firing multiple
         # times
         if self.continuation_mode == 'pong':
-            print 'pong'
             if round(self.center_position) == self.end_pos:
                 logger.debug("%s pong-end @ %s" % (self.name, self.end_pos))
                 self.moveto = self.start_pos
@@ -416,7 +414,6 @@ class Chase(LightGroup):
 
     def reset_positions(self):
         # called in association with off trigger
-        print 'resetting', self.center_position, self.off_mode
         if (self.off_mode == "reverse"):
             if self.center_position == self.start_pos:
                 self.moveto = self.end_pos
@@ -434,7 +431,6 @@ class Chase(LightGroup):
             # in all off situations, current_moveto never changes.
             self.setup_move()
         self.moving = False
-        print "moveto after reset", self.center_position, self.moveto, self.current_moveto
 
     def update_position(self, show):
         if self.current_moveto != self.moveto:
@@ -554,7 +550,6 @@ class HitPulse(Spawner):
         # return
         for e in self.spawned:
             if e.move_complete and not e.moving:
-                print 'removing'
                 for element in e.elements:
                     self.show.remove_element(element)
                     self.network.remove_element(element)
@@ -564,7 +559,6 @@ class HitPulse(Spawner):
             self.spawned.remove(e)
 
     def trigger(self, intensity, **kwargs):
-        print kwargs
         if intensity > 0:
             # TODO need input range
             # key = kwargs['key'][1] - 50
