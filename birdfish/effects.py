@@ -51,14 +51,25 @@ class BaseEffect(BaseLightElement):
             targets = self.targets
         elif isinstance(targets, LightElement):
             targets = [targets]
-        return self.filter_targets(targets)
+        # set self.targets for use by _off_trigger or other
+        # methods outside the update call
+        self.targets = self.filter_targets(targets)
+        return self.targets
 
     def trigger(self, intensity, **kwargs):
         if intensity:
             self.trigger_state = 1
+            self._on_trigger(intensity, **kwargs)
         else:
             self.trigger_state = 0
+            self._off_trigger(intensity, **kwargs)
 
+    def _off_trigger(self, intensity, **kwargs):
+        # Since effects can act on lights during release - after off-trigger
+        # they may be responsible for turning element intensity off
+        super(BaseEffect, self)._off_trigger()
+        for element in self.targets:
+            element.set_intensity(0)
 
 class ColorShift(BaseEffect, ColorEnvelope):
     # TODO notes:
@@ -70,6 +81,8 @@ class ColorShift(BaseEffect, ColorEnvelope):
         super(ColorShift, self).__init__(**kwargs)
         ColorEnvelope.__init__(self, **kwargs)
 
+    def _on_trigger(self, intensity, **kwargs):
+        self.reset()
 
     def update(self, show, targets=None):
         if self.trigger_state:
@@ -132,7 +145,6 @@ class Twinkle(BaseEffect):
                 self.cycle_elapsed = 0
 
         def _off_trigger(self):
-            super(Twinkle, self)._off_trigger()
             # only works for explicit effect targets
             [t.trigger(0) for t in self.targets]
             self.trigger_state = 1
