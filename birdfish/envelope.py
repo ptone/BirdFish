@@ -273,7 +273,7 @@ class TriggeredEnvelope(Envelope):
         self.label = kwargs.get('label', 'triggered-envelope')
         # two states - each has a segment - which may be a envelope with sub-segments
 
-    def trigger(self, state=1, value=1.0):
+    def trigger(self, state=1, value=1.0, force=False):
         """
         state is on or off
         value is 0-1 for max value of tween - currently not
@@ -286,6 +286,8 @@ class TriggeredEnvelope(Envelope):
         # this is only about state
         if value == 0:
             state = 0
+        if force:
+            self.state = not state
         if self.state != state:
             self.state = state
             if state:
