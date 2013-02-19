@@ -13,9 +13,8 @@ Contents:
 
     introduction
     installation
-    tutorial
     input_output
-    reference
+    envelopes
 
 Indices and tables
 ==================
