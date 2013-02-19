@@ -50,7 +50,7 @@ complex effects, without worrying about how the low level channel data is
 generated.
 
 Events control Light Elements
-----------------------------
+-----------------------------
 
 Events are the things that happen at a specific time to control an element. You
 can think of these roughly as the nubs on a music box wheel, or the notches in
