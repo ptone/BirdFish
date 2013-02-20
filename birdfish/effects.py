@@ -136,17 +136,34 @@ class Twinkle(BaseEffect):
                 # current cycle complete
                 if self.blinkon:
                     # trigger off targets
-                    [t.trigger(0) for t in targets]
+                    if self.use_trigger:
+                        [t.trigger(0) for t in targets]
+                    else:
+                        [t.set_intensity(0) for t in targets]
                     self.setup_cycle()
                 else:
-                    [t.trigger(self.intensity) for t in targets]
+                    for t in targets:
+                        if self.mode == 'darken':
+                            value = min(t.intensity, self.intensity)
+                        elif self.mode == 'lighten':
+                            value = max(t.intensity, self.intensity)
+                        else:
+                            value = self.intensity
+
+                        if self.use_trigger:
+                            t.trigger(value)
+                        else:
+                            t.set_intensity(value)
 
                 self.blinkon = not self.blinkon
                 self.cycle_elapsed = 0
 
         def _off_trigger(self):
             # only works for explicit effect targets
-            [t.trigger(0) for t in self.targets]
+            if self.use_trigger:
+                [t.trigger(0) for t in self.targets]
+            else:
+                [t.set_intensity(0) for t in targets]
             self.trigger_state = 1
 
 
