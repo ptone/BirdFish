@@ -6,14 +6,14 @@ have one or more targets that they can apply the effect to in unison
 
 change some attribute over time - generally using envelopes
 """
-from collections import OrderedDict
 import random
 from birdfish.envelope import (Envelope, EnvelopeSegment,
-        StaticEnvelopeSegment, ColorEnvelope)
+        ColorEnvelope)
 from birdfish.lights import BaseLightElement, LightElement
 from birdfish import tween
 
-# TODO There should probably be a base element - then BaseData or BaseLight element
+# TODO There should probably be a base element - then BaseData or BaseLight
+# element
 
 
 class BaseEffect(BaseLightElement):
@@ -71,6 +71,7 @@ class BaseEffect(BaseLightElement):
         for element in self.targets:
             element.set_intensity(0)
 
+
 class ColorShift(BaseEffect, ColorEnvelope):
     # TODO notes:
     # how does it handle the existing color of an element
@@ -109,25 +110,30 @@ class Twinkle(BaseEffect):
         self.blinkon = True
         self.cycle_elapsed = 0
         self.last_changed = None
+        self.mode = 'darken'
+        self.use_trigger = kwargs.get('use_trigger', True)
         # the parameters of current cycle
         self.on_dur = self.off_dur = self.intensity = 0
-        self.durations = {True:self.on_dur, False:self.off_dur}
+        self.durations = {True: self.on_dur, False: self.off_dur}
         # self.setup_cycle()
 
     def setup_cycle(self):
-        self.on_dur = self.on_min + random.random() * (self.on_max - self.on_min)
-        self.off_dur = self.off_min + random.random() * (self.off_max - self.off_min)
-        self.intensity = self.intensity_min + random.random() * (self.intensity_max - self.intensity_min)
-        self.durations = {True:self.on_dur, False:self.off_dur}
+        self.on_dur = self.on_min + random.random() * (self.on_max
+                - self.on_min)
+        self.off_dur = self.off_min + random.random() * (self.off_max
+                - self.off_min)
+        self.intensity = self.intensity_min + random.random() * (
+                self.intensity_max - self.intensity_min)
+        self.durations = {True: self.on_dur, False: self.off_dur}
 
     def update(self, show, targets=None):
-        # note, currently can not easily assign a twinkle to an elements effects
-        # array - must add it to the show directly as it uses the trigger method
-        # this is true of any effect that uses trigger method of elements for
-        # rendering the effect - basically an effect can not be piggy-backed on
-        # an elements trigger, if it is to use trigger to cause/manage the effect
-        # perhaps an effect should always manipulate the lower level attributes
-        # instead of using a trigger
+        # note, currently can not easily assign a twinkle to an elements
+        # effects array - must add it to the show directly as it uses the
+        # trigger method this is true of any effect that uses trigger method of
+        # elements for rendering the effect - basically an effect can not be
+        # piggy-backed on an elements trigger, if it is to use trigger to
+        # cause/manage the effect perhaps an effect should always manipulate
+        # the lower level attributes instead of using a trigger
         self.trigger_state = 1
         if self.trigger_state:
             targets = self.get_targets(targets)
@@ -194,9 +200,10 @@ class Blink(BaseEffect):
 
     def _set_frequency(self, frequency):
         self._frequency = frequency
-        self.period_duration = 1.0/(2 * self._frequency)
+        self.period_duration = 1.0 / (2 * self._frequency)
 
     frequency = property(_get_frequency, _set_frequency)
+
 
 class Pulser(BaseEffect):
 
@@ -204,11 +211,14 @@ class Pulser(BaseEffect):
     # "in the background" all the time,and may not be synced to
     # elements as desired.
     #
-    def __init__(self, frequency=1, on_shape=tween.LINEAR, off_shape=tween.LINEAR, **kwargs):
+    def __init__(self, frequency=1, on_shape=tween.LINEAR,
+            off_shape=tween.LINEAR, **kwargs):
         super(Pulser, self).__init__(**kwargs)
-        period_duration = 1.0/(2 * frequency)
-        on_flash = EnvelopeSegment(start=0, change=1, tween=on_shape, duration=period_duration)
-        off_flash = EnvelopeSegment(start=1, change=-1, tween=off_shape, duration=period_duration)
+        period_duration = 1.0 / (2 * frequency)
+        on_flash = EnvelopeSegment(start=0, change=1, tween=on_shape,
+                duration=period_duration)
+        off_flash = EnvelopeSegment(start=1, change=-1, tween=off_shape,
+                duration=period_duration)
         self.envelope = Envelope(loop=-1)
         self.envelope.segments = [on_flash, off_flash]
 
@@ -218,5 +228,3 @@ class Pulser(BaseEffect):
             val = self.envelope.update(show.time_delta)
             for target in targets:
                 target.set_intensity(val * target.intensity)
-
-

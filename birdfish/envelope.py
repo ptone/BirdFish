@@ -58,7 +58,8 @@ class EnvelopeProfile(object):
         return self.tween(delta, self.start, self.change, self.duration)
 
     def get_jump_time(self, value):
-        return tween.jump_time(self.tween, value, self.start, self.change, self.duration)
+        return tween.jump_time(self.tween, value, self.start, self.change,
+                self.duration)
 
 
 class EnvelopeSegment(object):
@@ -71,8 +72,14 @@ class EnvelopeSegment(object):
         if profile:
             self.profile = profile
         else:
-            self.profile = EnvelopeProfile(tween=tween, start=start,
-                    change=change, duration=duration, label="%s-profile" % label)
+            self.profile = EnvelopeProfile(
+                    tween=tween,
+                    start=start,
+                    change=change,
+                    duration=duration,
+                    label="%s-profile" % label
+            )
+
         self.label = label
         self.elapsed = 0
         self.value = 0
@@ -109,10 +116,6 @@ class EnvelopeSegment(object):
 
     @property
     def completed(self):
-        # print self.elapsed, self.duration
-        if self.elapsed >= self.profile.duration:
-            print self.elapsed, self.duration, self.value, self.profile.duration, self.profile.start, self.profile.change
-            print 'completed'
         return self.elapsed >= self.profile.duration
 
 
@@ -155,7 +158,8 @@ class Envelope(EnvelopeSegment):
         return self.segments[self.index]
 
     def get_profile(self):
-        logger.debug("Envelop %s profile property, index: %s" % (self.label, self.index))
+        logger.debug("Envelop %s profile property, index: %s" % (self.label,
+            self.index))
         end_segment = self.get_current_segment()
         return end_segment.profile
 
@@ -189,7 +193,8 @@ class Envelope(EnvelopeSegment):
                 self.segments[self.index].reset()
                 self.index = 0
                 self.current_segment_time_delta = 0
-                if self.loop_counter and self.loop > 0:  # this is a finite loop
+                if self.loop_counter and self.loop > 0:
+                    # this is a finite loop
                     self.loop_counter -= 1
                 return True
             else:
@@ -208,7 +213,6 @@ class Envelope(EnvelopeSegment):
         self.advancing = False
         return False
 
-
     def update(self, delta):
         # delta is time passed since last update
         if self.index + 1 > len(self.segments):
@@ -226,7 +230,7 @@ class Envelope(EnvelopeSegment):
                 self.label,
                 self.current_segment_time_delta,
                 delta,
-                ))
+        ))
         logger.debug("current segment %s" % segment.label)
         # TODO this is advancing past end of on segemnt,
         # when that on segment only contains a 0 duration attack, and no decay
@@ -258,9 +262,10 @@ class Envelope(EnvelopeSegment):
         # a duration of 0 means it is infinite
         self._duration = 0
         for segment in self.segments:
-            # TODO need to decide if segment can be None, or is always a segment subclass
-            # otherwise could just
-            # self._duration = sum([segment.duration for segment in self.segments if segment.duration > 0])
+            # TODO need to decide if segment can be None, or is always
+            # a segment subclass otherwise could just self._duration
+            # = sum([segment.duration for segment in self.segments if
+            # segment.duration > 0])
             if segment and segment.duration:
                 self._duration += segment.duration
 
@@ -271,7 +276,8 @@ class TriggeredEnvelope(Envelope):
         super(TriggeredEnvelope, self).__init__(*args, **kwargs)
         self.state = 0  # on:1 off:0
         self.label = kwargs.get('label', 'triggered-envelope')
-        # two states - each has a segment - which may be a envelope with sub-segments
+        # two states - each has a segment - which may be a envelope with
+        # sub-segments
 
     def trigger(self, state=1, value=1.0, force=False):
         """
@@ -303,22 +309,21 @@ class TriggeredEnvelope(Envelope):
                 # off trigger
                 self.advance()
                 logger.debug("current value: %s" % self.value)
-                logger.debug("current change for release: %s" % self.segments[1].get_profile().change)
+                logger.debug("current change for release: %s" %
+                        self.segments[1].get_profile().change)
                 if self.value < self.segments[1].get_profile().start:
                     # TODO this shortcut works on release, but for attack?
                     # also need to sort out when in decay (say .9), and release
                     # start is .8 - now will be greater - want a way to change
                     # release start value for this time only
-                    # perhaps start value should always just be current value - for when greater
-                    # if dimmer, want shorter release
-                    # if brigher (.9) then want standard release time but greater change
+                    # perhaps start value should always just be current value
+                    # - for when greater if dimmer, want shorter release if
+                    # brigher (.9) then want standard release time but greater
+                    # change
 
-                    jump_value = self.segments[1].get_profile().get_jump_time(self.value)
+                    jump_value = self.segments[1].get_profile().get_jump_time(
+                            self.value)
                     self.update(jump_value)
-                    # self.current_segment_time_delta += self.segments[1].profile.get_jump_time(self.value)
-                    # self.segments[0].segments[0].current_segment_time_delta = self.current_segment_time_delta
-                # else:
-                # print "set change of release"
                 # TODO - this won't work for multisegment release
                 # if not hasattr(self.segments[1], 'segments'):
                 # self.segments[1].segments[0].profile.change = -1 * self.value
@@ -327,7 +332,8 @@ class TriggeredEnvelope(Envelope):
                     # print "has segments"
                     # print self.segments[1].segments
 
-                logger.debug("new current change for release: %s" % self.segments[1].get_profile().change)
+                logger.debug("new current change for release: %s" %
+                        self.segments[1].get_profile().change)
         self.state = state
 
     def update(self, delta):
@@ -336,6 +342,7 @@ class TriggeredEnvelope(Envelope):
             return self.value
         else:
             return super(TriggeredEnvelope, self).update(delta)
+
 
 class ADSREnvelope(TriggeredEnvelope):
     """
@@ -348,7 +355,7 @@ class ADSREnvelope(TriggeredEnvelope):
         off:
             release
     """
-    def __init__(self, 
+    def __init__(self,
             peak_value=1.0,
             sustain_value=0.8,
             attack_shape=tween.LINEAR,
@@ -392,13 +399,14 @@ class ADSREnvelope(TriggeredEnvelope):
         self.release_envelope = EnvelopeSegment(
                 tween=release_shape,
                 start=sustain_value,
-                change=0-sustain_value,
+                change=0 - sustain_value,
                 duration=release_duration,
                 label="release",
                 )
         self.off_envelope = Envelope(label="off-envelope")
         self.off_envelope.segments.append(self.release_envelope)
         self.segments = [self.on_envelope, self.off_envelope]
+
 
 class ColorEnvelope(object):
     """

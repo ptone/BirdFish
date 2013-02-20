@@ -1,10 +1,8 @@
 from __future__ import division
 
-import sys
 from collections import deque
 from copy import deepcopy
 import colorsys
-import threading
 import warnings
 # from ola.OlaClient import OlaClient, Universe
 # import client_wrapper
@@ -12,8 +10,6 @@ import time
 # import select
 import math
 import random
-import logging
-import pytweener
 import tween
 from envelope import ADSREnvelope, EnvelopeSegment
 from scene import SceneManager
@@ -62,6 +58,7 @@ class LightingNetworkElement(object):
             # = max (dmx_val,dmx[channel-1]) #zero index adjust??
             # currently this brightest wins is done by zero out the data
 
+
 class BaseLightElement(object):
     """
     This class handles trigger events, and is updated with the show timeline
@@ -108,8 +105,10 @@ class BaseLightElement(object):
             self.trigger_intensity = 0.0
             self.intensity = max(0, self.intensity)
             logger.debug('not advancing, intensity: {}'.format(self.intensity))
-            logger.debug('not advancing, trigger intensity: {}'.format(self.trigger_intensity))
-            # only turn off effects here so they can continue to effect releases
+            logger.debug('not advancing, trigger intensity: {}'.format(
+                self.trigger_intensity))
+            # only turn off effects here so they can continue to effect
+            # releases
             [x.trigger(0) for x in self.effects]
 
         # moved dmx update to show update, to accomodate effects
@@ -148,23 +147,25 @@ class BaseLightElement(object):
             self.intensity = 0.0  # reset light on trigger
             self.adsr_envelope.trigger(state=1)
             self._on_trigger(intensity, **kwargs)
-        elif intensity == 0 and self.trigger_state and not self.trigger_toggle and not self.bell_mode:
+        elif intensity == 0 and (self.trigger_state and not self.trigger_toggle
+                and not self.bell_mode):
             self._off_trigger()
         elif intensity and self.trigger_state and self.trigger_toggle:
             self._off_trigger()
         elif intensity > self.intensity and self.trigger_state == 1:
             # a greater trigger intensity has occured - override
             self.trigger_intensity = intensity
-            logger.debug("%s: override trigger on @ %s" % (self.name, intensity))
+            logger.debug("%s: override trigger on @ %s" %
+                    (self.name, intensity))
             self.intensity = 0.0  # reset light on trigger
             # reset the envelope with a forced on trigger
             self.adsr_envelope.trigger(state=1, force=True)
         # else redundant trigger
 
-
     def off(self):
         """convenience for off"""
         self.trigger(0.0)
+
 
 class LightElement(BaseLightElement, LightingNetworkElement):
     """
@@ -174,6 +175,7 @@ class LightElement(BaseLightElement, LightingNetworkElement):
     def __init__(self, *args, **kwargs):
         BaseLightElement.__init__(self, *args, **kwargs)
         LightingNetworkElement.__init__(self, *args, **kwargs)
+
 
 class RGBLight(LightElement):
     RED = (1, 0, 0)
@@ -207,7 +209,10 @@ class RGBLight(LightElement):
 
     # @@ need to address the attribute of intensity in the context of RGB
     def update_hue(self):
-        """updates hue property from RGB values, RGB is always updated when hue changed"""
+        """
+        updates hue property from RGB values, RGB is always updated when hue
+        changed
+        """
         adjusted_rgb = [x * self.intensity for x in [
             self.red, self.green, self.blue]]
         h, s, v = colorsys.rgb_to_hsv(*tuple(adjusted_rgb))
@@ -218,19 +223,22 @@ class RGBLight(LightElement):
         hue = self._hue
         saturation = self._saturation
         if 'intensity' in self.channels.values():
-            # if the fixture has its own intensity slider - always calc RGB values at full intensity
+            # if the fixture has its own intensity slider - always calc RGB
+            # values at full intensity
             intensity = 1.0
         else:
             intensity = self.intensity
         # this funct takes all 0-1 values
         r, g, b = colorsys.hsv_to_rgb(hue, saturation, intensity)
-        # here intensity is assumed to be full, as HSV to RGB sets RGB values accordingly
+        # here intensity is assumed to be full, as HSV to RGB sets RGB values
+        # accordingly
         self.red = r
         self.green = g
         self.blue = b
 
     def _get_hue(self):
-        # @@ need to update with function in case r,g,b were updated other than through hue
+        # TODO need to update with function in case r,g,b were updated other
+        # than through hue
         return self._hue
 
     def _set_hue(self, hue):
@@ -243,14 +251,18 @@ class RGBLight(LightElement):
     def _set_saturation(self, saturation):
         self._saturation = saturation
         self.update_rgb()
-        # @@ concept of intensity should be converted to raw RGB for base RGB light
-        # no assumption of 4th channel
+        # TODO concept of intensity should be converted to raw RGB for base RGB
+        # light no assumption of 4th channel
 
     hue = property(_get_hue, _set_hue)
     saturation = property(_get_saturation, _set_saturation)
 
-class LightGroup(BaseLightElement):  # TODO why base light element, and not light element?
-    """A collection of light Elements triggered in collectively in some form"""
+
+class LightGroup(BaseLightElement):
+    # TODO why base light element, and not light element?
+    """
+    A collection of light Elements triggered in collectively in some form
+    """
     def __init__(self, *args, **kwargs):
         super(LightGroup, self).__init__(*args, **kwargs)
         self.elements = kwargs.get('elements', [])
@@ -300,7 +312,7 @@ class Chase(LightGroup):
         self.center_position = 0
         self.moveto = None
         self.current_moveto = None
-        self.speed_mode = 'duration' # or 'speed' of units per second
+        self.speed_mode = 'duration'  # or 'speed' of units per second
         self.speed = kwargs.get('speed', 1)
         self.move_envelope = None
         self.move_tween = kwargs.get('move_tween', tween.LINEAR)
@@ -357,10 +369,12 @@ class Chase(LightGroup):
             self.moving = True
             self.setup_move()
             self._on_trigger(intensity, **kwargs)
-        elif intensity == 0 and self.trigger_state and not self.trigger_toggle and not self.bell_mode:
+        elif intensity == 0 and (self.trigger_state and not self.trigger_toggle
+                and not self.bell_mode):
             self._off_trigger()
         elif intensity and self.trigger_state and self.trigger_toggle:
-            logger.info("%s: chase trigger toggle off @ %s" % (self.name, intensity))
+            logger.info("%s: chase trigger toggle off @ %s" % (self.name,
+                intensity))
             self._off_trigger()
 
     def setup_move(self, moveto=None):
@@ -420,15 +434,15 @@ class Chase(LightGroup):
             else:
                 self.moveto = self.start_pos
             self.moveto = int(self.moveto)
-        else: # all or follow
+        else:  # all or follow
             if self.trigger_state:
-                self.moveto = int(self.center_position) #  self.end_pos
+                self.moveto = int(self.center_position)  # self.end_pos
             else:
                 self.moveto = self.end_pos
             self.center_position = self.last_center = self.start_pos
             self.moveto = int(self.moveto)
-            # setup_move only called from update_position if moveto != current moveto
-            # in all off situations, current_moveto never changes.
+            # setup_move only called from update_position if moveto != current
+            # moveto in all off situations, current_moveto never changes.
             self.setup_move()
         self.moving = False
 
@@ -436,7 +450,8 @@ class Chase(LightGroup):
         if self.current_moveto != self.moveto:
             self.setup_move()
         if self.moveto is not None:
-                self.center_position = self.move_envelope.update(show.time_delta)
+                self.center_position = self.move_envelope.update(
+                        show.time_delta)
 
     def update(self, show):
         super(Chase, self).update(show)
@@ -465,17 +480,24 @@ class Chase(LightGroup):
         if self.sweep:
             # trigger everything up to current center
             if self.last_center > current_center:
-                [e.trigger(self.trigger_intensity) for e in self.elements[current_center:self.last_center]]
+                [e.trigger(self.trigger_intensity) for
+                        e in self.elements[current_center:self.last_center]]
             else:
-                [e.trigger(self.trigger_intensity) for e in self.elements[self.last_center:current_center]]
+                [e.trigger(self.trigger_intensity) for
+                        e in self.elements[self.last_center:current_center]]
         else:
             # trigger only the width
             [e.trigger(0) for e in self.elements]
             if current_center > self.moveto:
-                [e.trigger(self.trigger_intensity) for e in self.elements[current_center:(current_center + self.width)]]
+                [e.trigger(self.trigger_intensity) for
+                        e in self.elements[
+                            current_center:(current_center + self.width)]]
             else:
-                [e.trigger(self.trigger_intensity) for e in self.elements[current_center - self.width:current_center]]
+                [e.trigger(self.trigger_intensity) for
+                        e in self.elements[
+                            current_center - self.width:current_center]]
         self.last_center = current_center
+
 
 class Spawner(object):
     def __init__(self, *args, **kwargs):
@@ -508,6 +530,7 @@ class Spawner(object):
             new_spawn.trigger(intensity)
             self.spawned.append(new_spawn)
 
+
 class HitPulse(Spawner):
 
     def __init__(self, *args, **kwargs):
@@ -515,7 +538,6 @@ class HitPulse(Spawner):
         self.elements = []
         self.width = 8
         self.network = None
-
 
     def spawn(self, center):
         pair = []
@@ -567,6 +589,7 @@ class HitPulse(Spawner):
                 new_spawn.trigger(intensity)
                 self.spawned.append(new_spawn)
 
+
 class Pulse(object):
     """
     handles the rendering of a pulse in the abstract sense
@@ -593,24 +616,23 @@ class Pulse(object):
         that describes the left and right shape of the pulse around
         the center_position.
 
-        The node_range specifies the location start and end of the pulse overall
+        The node_range specifies the location start and end of the pulse
+        overall
         """
         node_offset = self.center_position % 1
         left_of_center = math.floor(self.center_position)
         far_left = int(left_of_center - self.left_width)
         self.nodes = []
         for n in range(self.left_width + 1):
-            self.nodes.append(
-                    # max(0.0, self.left_shape(n + node_offset, 1, -1, self.left_width + 1.0)))
-                    self.left_shape(n + node_offset, 1, -1, self.left_width + 1.0))
+            self.nodes.append(self.left_shape(
+                        n + node_offset, 1, -1, self.left_width + 1.0))
         if far_left >= 1:
             self.nodes.append(0)
             far_left -= 1
         self.nodes.reverse()
         for n in range(1, self.right_width + 1):
-            self.nodes.append(
-                    # max(0.0, self.right_shape(max(0, n - node_offset), 1, -1, self.right_width + 1.0)))
-                    self.right_shape(max(0, n - node_offset), 1, -1, self.right_width + 1.0))
+            self.nodes.append(self.right_shape(
+                    max(0, n - node_offset), 1, -1, self.right_width + 1.0))
         self.nodes.append(0)
         self.node_range = range(far_left, far_left + len(self.nodes))
         logger.debug("NodeData:")
@@ -644,7 +666,8 @@ class PulseChase(Chase, Pulse):
 
     def update(self, show):
         super(PulseChase, self).update(show)
-        logger.debug("%s Centered @ %s -> %s" % (self.name, self.center_position, self.end_pos))
+        logger.debug("%s Centered @ %s -> %s" %
+                (self.name, self.center_position, self.end_pos))
 
     def render(self):
         self.set_current_nodes()
@@ -733,7 +756,7 @@ class LightShow(object):
             frame_count -= 1
         elif frame_count == 0:
             return frame
-        return sum(self.recent_frames)/frame_count
+        return sum(self.recent_frames) / frame_count
 
     def run_live(self):
         self.init_show()
@@ -755,7 +778,7 @@ class LightShow(object):
                 self.frame_delay += .01
                 if discrepancy > .3:
                     warnings.warn("Slow refresh")
-            elif discrepancy < -.01 and self.frame_delay > 1/self.frame_rate:
+            elif discrepancy < -.01 and self.frame_delay > 1 / self.frame_rate:
                 # we can speed back up
                 self.frame_delay -= .01
             self.frame += 1
@@ -771,11 +794,6 @@ class LightShow(object):
                 n.send_data()
             if self.frame == 20:
                 self.frame = 0
-                # send_speed = nownow - pre_send
-                # print "framerate: %s" % min(self.frame_rate, int(1/effective_framerate))
-                # if remainder > 0:
-                    # print "buffer: %s%%" % int(remainder/self.frame_delay * 100)
-
 
     def update(self):
         """The main show update command"""

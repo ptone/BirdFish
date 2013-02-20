@@ -1,3 +1,8 @@
+"""
+Note: this file is very out of date, and is not current with the rest of the
+library
+
+"""
 import threading
 from pprint import pprint, pformat
 import pytweener

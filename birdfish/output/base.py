@@ -1,10 +1,11 @@
 import array
 
+
 class BaseNetwork(object):
 
     def __init__(self):
         self.elements = []
-        self.data = array.array('B',())
+        self.data = array.array('B', ())
 
     def init_data(self):
         max_chan = 0
@@ -34,23 +35,23 @@ class BaseNetwork(object):
         except ValueError:
             return False
 
-    def get_named_element(self,name):
+    def get_named_element(self, name):
         for l in self.elements:
             # @@ should this be case insensitive?
             if l.name.lower() == name.lower():
                 return l
         return False
 
-    def add_elements(self,lights):
+    def add_elements(self, lights):
         for l in lights:
             self.add_element(l)
-
 
     def update_data(self):
         [e.update_data(self.data) for e in self.elements]
 
     def send_data(self):
         raise NotImplementedError
+
 
 class DefaultNetwork(BaseNetwork):
     def __init__(self):
