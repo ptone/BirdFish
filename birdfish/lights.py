@@ -4,15 +4,12 @@ from collections import deque
 from copy import deepcopy
 import colorsys
 import warnings
-# from ola.OlaClient import OlaClient, Universe
-# import client_wrapper
 import time
-# import select
 import math
 import random
 import tween
 from envelope import ADSREnvelope, EnvelopeSegment
-from scene import SceneManager
+# from scene import SceneManager
 from birdfish.output.base import DefaultNetwork
 
 from birdfish.log_setup import logger
@@ -696,7 +693,7 @@ class LightShow(object):
         self.effects = []
         self.frame_rate = 40
         self.dmx_keep_alive = True
-        self.scenemanager = SceneManager()
+        # self.scenemanager = SceneManager()
         self.frame_delay = 1 / self.frame_rate
         self.running = True
         self.named_elements = {}
@@ -797,7 +794,7 @@ class LightShow(object):
 
     def update(self):
         """The main show update command"""
-        self.scenemanager.update(self)
+        # self.scenemanager.update(self)
         for element in self.elements:
             element.update(self)
         for e in self.effects:
