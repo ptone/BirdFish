@@ -501,7 +501,7 @@ class Spawner(object):
         self.model = kwargs.get('model', None)
         self.show = kwargs.get('show')
         self.network = kwargs.get('network')
-        self.spawned = []
+        self.spawned = {}
         self.channels = []
 
     def spawn(self):
@@ -539,15 +539,16 @@ class HitPulse(Spawner):
     def spawn(self, center):
         pair = []
         random_hue = random.random()
+        chase_pair = LightGroup()
         for rev in (True, False):
             chase = Chase(
                     start_pos=0,
                     end_pos=self.width,
-                    speed=.4,
-                    move_tween=tween.OUT_EXPO,
+                    speed=.15,
+                    # move_tween=tween.OUT_EXPO,
                     )
             chase.off_mode = "reverse"
-            chase.bell_mode = True
+            # chase.bell_mode = True
             if rev:
                 chase.elements = self.elements[center - self.width:center]
                 chase.elements.reverse()
@@ -561,30 +562,46 @@ class HitPulse(Spawner):
                 x.hue = random_hue
             pair.append(chase)
         pair.reverse()
-        return pair
+        chase_pair.elements = pair
+        return chase_pair
 
     def update(self, show):
         # remove completed items
         remove = []
         # return
-        for e in self.spawned:
-            if e.move_complete and not e.moving:
+        for key, e in self.spawned.items():
+            # TODO need a more abstract way of determining if element is
+            # 'complete'
+            if e.trigger_intensity == 0 and e.move_complete and not e.moving:
                 for element in e.elements:
                     self.show.remove_element(element)
                     self.network.remove_element(element)
                 self.show.remove_element(e)
-                remove.append(e)
-        for e in remove:
-            self.spawned.remove(e)
+                remove.append(key)
+        for key in remove:
+            del(self.spawned[key])
 
     def trigger(self, intensity, **kwargs):
         if intensity > 0:
             # TODO need input range
             # key = kwargs['key'][1] - 50
+            # TODO need to handle trigger's more abstractly for OSC etc
+            # TODO need to have self.spawned be a dict with keys so that
+            # off triggers can find their matching spawned item, to support
+            # more than just bell_mode
             key = kwargs['key'][1]
-            for new_spawn in self.spawn(center=key):
+            print key
+            spawned_pair = self.spawn(center=key)
+            for new_spawn in spawned_pair:
                 new_spawn.trigger(intensity)
-                self.spawned.append(new_spawn)
+            self.spawned[key] = spawned_pair
+        else:
+            # off trigger
+            key = kwargs['key'][1]
+            if key in self.spawned:
+                # may not be present if bell mode already removed
+                spawned_pair = self.spawned[key]
+                [spawn.trigger(0) for spawn in spawned_pair]
 
 
 class Pulse(object):
