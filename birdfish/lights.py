@@ -273,11 +273,11 @@ class LightGroup(BaseLightElement):
         if sig_intensity:
             intensity = min(self.max_intensity, sig_intensity)
             self.trigger_state = 1
-            self.trigger_intensity = sig_intensity
             self.update_active = True
         else:
             self.trigger_state = 0
             intensity = 0.0
+        self.trigger_intensity = intensity
         [l.trigger(intensity) for l in self.elements]
         [x.trigger(intensity) for x in self.effects]
 
