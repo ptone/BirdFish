@@ -541,8 +541,11 @@ class HitPulse(Spawner):
         self.width = 8
         self.network = None
 
-    def spawn(self, center):
-        pair = []
+    def spawn(self, key):
+        if key in self.spawned:
+            return self.spawned[key]
+        center = key
+        # TODO the roles of trigger and spawn need to be better divided
         random_hue = random.random()
         chase_pair = LightGroup()
         for rev in (True, False):
@@ -555,19 +558,26 @@ class HitPulse(Spawner):
             chase.off_mode = "reverse"
             # chase.bell_mode = True
             if rev:
-                chase.elements = self.elements[center - self.width:center]
-                chase.elements.reverse()
+                elements = self.elements[center - self.width:center]
+                elements.reverse()
             else:
-                chase.elements = self.elements[center:center + self.width]
-            self.show.add_element(chase)
-            chase.elements = [deepcopy(x) for x in chase.elements]
+                elements = self.elements[center:center + self.width]
+            chase.elements = [deepcopy(x) for x in elements]
             for x in chase.elements:
-                self.show.add_element(x)
-                self.network.add_element(x)
                 x.hue = random_hue
-            pair.append(chase)
-        pair.reverse()
-        chase_pair.elements = pair
+                self.network.add_element(x)
+                # self.show.add_element(x, network=self.network)
+            chase_pair.elements.append(chase)
+            # chase_pair.elements = [deepcopy(x) for x in self.elements[30:31]]
+            # self.show.add_element(chase)
+
+            # chase_pair.elements.extend(chase.elements)
+            # for x in chase_pair.elements:
+                # x.hue = random_hue
+                # self.network.add_element(x)
+
+        self.spawned[key] = chase_pair
+        self.show.add_element(chase_pair)
         return chase_pair
 
     def update(self, show):
@@ -577,10 +587,8 @@ class HitPulse(Spawner):
         for key, e in self.spawned.items():
             # TODO need a more abstract way of determining if element is
             # 'complete'
-            if e.trigger_intensity == 0 and e.move_complete and not e.moving:
-                for element in e.elements:
-                    self.show.remove_element(element)
-                    self.network.remove_element(element)
+            if e.trigger_intensity == 0:
+                # print 'removing element for ', key
                 self.show.remove_element(e)
                 remove.append(key)
         for key in remove:
@@ -595,18 +603,16 @@ class HitPulse(Spawner):
             # off triggers can find their matching spawned item, to support
             # more than just bell_mode
             key = kwargs['key'][1]
+            spawned_pair = self.spawn(key=key)
+            spawned_pair.trigger(intensity)
             print key
-            spawned_pair = self.spawn(center=key)
-            for new_spawn in spawned_pair:
-                new_spawn.trigger(intensity)
-            self.spawned[key] = spawned_pair
         else:
             # off trigger
             key = kwargs['key'][1]
             if key in self.spawned:
                 # may not be present if bell mode already removed
                 spawned_pair = self.spawned[key]
-                [spawn.trigger(0) for spawn in spawned_pair]
+                spawned_pair.trigger(0)
 
 
 class Pulse(object):
