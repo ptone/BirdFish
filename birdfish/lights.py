@@ -729,7 +729,8 @@ class LightShow(object):
             network.add_element(element)
             if network not in self.networks:
                 self.networks.append(network)
-        self.elements.append(element)
+        if element not in self.elements:
+            self.elements.append(element)
 
     def remove_element(self, element, network=None):
         for network in self.networks:
