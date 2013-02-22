@@ -297,8 +297,10 @@ class LightGroup(BaseLightElement):
             # TODO for consistancy sake, should this just be represented as
             # trigger_intensity of the group?
             self.update_active = elements_active
-            self.trigger_intensity = self.update_active
 
+            # TODO - setting trigger_intensity here messes up chases
+            # but without it need a better way to remove spent spawn
+            # self.trigger_intensity = self.update_active
 
     # TODO could have hue, saturation and other basic property passthrough?
 
