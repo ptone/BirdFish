@@ -272,8 +272,8 @@ class LightGroup(BaseLightElement):
     def trigger(self, sig_intensity, **kwargs):
         if sig_intensity:
             intensity = min(self.max_intensity, sig_intensity)
-            [x.trigger(intensity) for x in self.effects]
             self.trigger_state = 1
+            self.trigger_intensity = sig_intensity
             self.update_active = True
         else:
             self.trigger_state = 0
@@ -294,7 +294,10 @@ class LightGroup(BaseLightElement):
                 elements_active = elements_active or element.trigger_intensity
             # set our own active state based on whether
             # any element is still active
+            # TODO for consistancy sake, should this just be represented as
+            # trigger_intensity of the group?
             self.update_active = elements_active
+            self.trigger_intensity = self.update_active
 
 
     # TODO could have hue, saturation and other basic property passthrough?
