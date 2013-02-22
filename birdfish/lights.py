@@ -278,8 +278,8 @@ class LightGroup(BaseLightElement):
         else:
             self.trigger_state = 0
             intensity = 0.0
-        [x.trigger(intensity) for x in self.effects]
         [l.trigger(intensity) for l in self.elements]
+        [x.trigger(intensity) for x in self.effects]
 
     def set_intensity(self, intensity):
         # the group element always has a pseudo-intensity of 1
