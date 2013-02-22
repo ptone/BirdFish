@@ -16,7 +16,6 @@ from birdfish.log_setup import logger
 
 # logger = logging.getLogger('birdfish')
 # logger.setLevel(logging.INFO)
-# print logger
 
 
 class LightingNetworkElement(object):
@@ -72,6 +71,8 @@ class BaseLightElement(object):
         self.adsr_envelope = ADSREnvelope(**kwargs)
         # a simple element has values set externally and does not update
         self.simple = False
+        # TODO I'm pretty sure trigger_state is entirely replaceable with
+        # trigger_intensity every place it is used
         self.trigger_state = 0
         self.trigger_toggle = False
         self.effects = []
@@ -264,6 +265,7 @@ class LightGroup(BaseLightElement):
         super(LightGroup, self).__init__(*args, **kwargs)
         self.elements = kwargs.get('elements', [])
         self.name = kwargs.get("name", "lightgroup")
+        # TODO need min and max intensity - at a more baseclass level
         self.max_intensity = 1.0
         self.update_active = False
 

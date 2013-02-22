@@ -26,7 +26,7 @@ class BaseNetwork(object):
             self.elements.append(element)
             return True
         return False
-        # element.network=self? will this ever be needed?
+        # TODO element.network=self? will this ever be needed?
 
     def remove_element(self, element):
         try:
