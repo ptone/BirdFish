@@ -733,6 +733,9 @@ class LightShow(object):
             self.elements.append(element)
 
     def remove_element(self, element, network=None):
+        if hasattr(element, 'elements') and element.elements:
+            for sub_element in element.elements:
+                self.remove_element(sub_element)
         for network in self.networks:
             network.remove_element(element)
         try:
