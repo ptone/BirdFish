@@ -21,13 +21,9 @@ show.networks.append(dmx3)
 # create an input interface
 dispatcher = MidiDispatcher("MidiKeys")
 
-
-
-
-
 simple = Chase(name="simplechase")
 elementid = 0
-for i in range(1,360,3):
+for i in range(1, 360, 3):
     elementid += 1
     l = RGBLight(
             start_channel=i,
@@ -59,18 +55,12 @@ simple.width = 3
 show.add_element(simple)
 # set the input interface to trigger the element
 # midi code 70 is the "V" key on the qwerty keyboard for the midikeys app
-dispatcher.add_observer((0,65), simple)
-
-
-
-
-
-
+dispatcher.add_observer((0, 65), simple)  # J
 
 
 p = Chase(name="bluechase")
 elementid = 0
-for i in range(1,360,3):
+for i in range(1, 360, 3):
     elementid += 1
     l = RGBLight(
             start_channel=i,
@@ -100,7 +90,7 @@ p.trigger_toggle = True
 show.add_element(p)
 # set the input interface to trigger the element
 # midi code 70 is the "J" key on the qwerty keyboard for the midikeys app
-dispatcher.add_observer((0,70), p)
+dispatcher.add_observer((0, 70), p)  # J
 
 
 # ----------------------------------------------------------------------------
@@ -111,7 +101,7 @@ purple_chase = Chase(
         )
 
 elementid = 0
-for i in range(1,360,3):
+for i in range(1, 360, 3):
     elementid += 1
     l = RGBLight(
             start_channel=i,
@@ -132,7 +122,7 @@ for i in range(1,360,3):
 show.add_element(purple_chase)
 # set the input interface to trigger the element
 # midi code 70 is the "M" key on the qwerty keyboard for the midikeys app
-dispatcher.add_observer((0,71), purple_chase)
+dispatcher.add_observer((0, 71), purple_chase)  # M
 
 # ----------------------------------------------------------------------------
 
@@ -143,7 +133,7 @@ highlow = Chase(
         )
 
 elementid = 0
-for i in range(1,360,3):
+for i in range(1, 360, 3):
     elementid += 1
     l = RGBLight(
             start_channel=i,
@@ -166,7 +156,7 @@ highlow.bell_mode = True
 show.add_element(highlow)
 # set the input interface to trigger the element
 # midi code 70 is the "l" key on the qwerty keyboard for the midikeys app
-dispatcher.add_observer((0,73), highlow)
+dispatcher.add_observer((0, 73), highlow)  # L
 
 # ----------------------------------------------------------------------------
 follow_chase = Chase(
@@ -177,7 +167,7 @@ follow_chase = Chase(
 follow_chase.off_mode = "follow"
 
 elementid = 0
-for i in range(1,360,3):
+for i in range(1, 360, 3):
     elementid += 1
     l = RGBLight(
             start_channel=i,
@@ -199,7 +189,7 @@ for i in range(1,360,3):
 show.add_element(follow_chase)
 # set the input interface to trigger the element
 # midi code 70 is the "M" key on the qwerty keyboard for the midikeys app
-dispatcher.add_observer((0,69), follow_chase)
+dispatcher.add_observer((0, 69), follow_chase)  # N
 
 reverse_chase = Chase(
         name="reverse chase",
@@ -212,7 +202,7 @@ reverse_chase.off_mode = "reverse"
 reverse_chase.bell_mode = True
 
 elementid = 0
-for i in range(1,360,3):
+for i in range(1, 360, 3):
     elementid += 1
     l = RGBLight(
             start_channel=i,
@@ -234,7 +224,7 @@ for i in range(1,360,3):
 show.add_element(reverse_chase)
 # set the input interface to trigger the element
 # midi code 70 is the "M" key on the qwerty keyboard for the midikeys app
-dispatcher.add_observer((0,67), reverse_chase)
+dispatcher.add_observer((0, 67), reverse_chase)  # B
 
 
 # startup the midi communication - runs in its own thread
