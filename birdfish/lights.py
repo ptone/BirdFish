@@ -14,25 +14,33 @@ from birdfish.output.base import DefaultNetwork
 
 from birdfish.log_setup import logger
 
-# logger = logging.getLogger('birdfish')
-# logger.setLevel(logging.INFO)
-# print logger
-
 
 class LightingNetworkElement(object):
-    """This item represents an element that provides channel data"""
+    """
+    This item represents an element that provides channel data to a network.
+    """
 
     def __init__(self, start_channel=1, *args, **kwargs):
+        """
+        start_channel: The first channel this device occupies in a
+        network.
+
+        The channels dictionary contains a mapping of channel numbers to object
+        attributes.
+        """
         self.name = kwargs.get('name', "baselight")
         # signal intensity is the value set by the note on velocity -
         # does not reflect current brightness
         self.channels = {}
-
+        self.intensity = 0
         self.channels[start_channel] = 'intensity'
 
     def update_data(self, data):
         """
-        data is an array of data (ie DMX) that should be updated
+        This method is called by the network containing this item in order to
+        retrieve the current channel values.
+
+        Data is an array of data (ie DMX) that should be updated
         with this light's channels
         """
         for channel, value in self.channels.items():
@@ -46,44 +54,66 @@ class LightingNetworkElement(object):
             # data structure - means forcing to bytes here instead
             # of output network level - practically this is OK as all
             # networks are using 1 byte max per channel
-            data[channel - 1] = max(data[channel - 1], int(val * 255))
 
-            # no easy way to have more than one light on the same channel would
-            # need some way to track which objs have updated a slot - so that
-            # each has a shot at increasing it.  @@ need a way to check for
-            # channel collisions to avoide unexpected results dmx[channel-1]
-            # = max (dmx_val,dmx[channel-1]) #zero index adjust??
-            # currently this brightest wins is done by zero out the data
+            # Here the channel values are highest value wins
+            data[channel - 1] = max(data[channel - 1], int(val * 255))
 
 
 class BaseLightElement(object):
     """
-    This class handles trigger events, and is updated with the show timeline
+    This class handles trigger events, and is updated with the show timeline.
     """
 
     # TODO need to factor the ADSR related parts out of this class
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self,
+            name="unamed_LightElements",
+            bell_mode=False,
+            simple=False,
+            trigger_toggle=False,
+            *args, **kwargs):
+        """
+        name is used for retrieving elements from the show
+
+        bell_mode is a boolean that determines how the element proceeds through
+        the Attack-Decay-Sustain-Release envelope in response to triggers. When
+        bell_mode is True, the envelope continues through the end of release on
+        the "on" trigger alone. When bell_mode is False the ADSR envelope halts
+        at sustain, until an off trigger event.
+
+        simple is an attribute, which will disable the update process, allowing
+        the elements attributes to be set directly.  This can be useful for
+        situations where a parent object manages all the attribute changes for
+        child elements.
+
+        trigger_toggle determines the way on and off triggers are handled. When
+        True, only 'on' trigger events are responded to, and they toggle the
+        element on and off. This can be useful if the device only supports
+        momentary push buttons.
+
+        Effects contain an array of :class:`~birdfish.effects.BaseEffect`
+        objects.
+        """
+
         self.trigger_intensity = 0.0
-        self.intensity = 0.0
-        self.universe = 1
-        self.bell_mode = False
-        self.name = kwargs.get("name", "unnamed_LightElement")
+        self.bell_mode = bell_mode
+        self.name = name
         self.adsr_envelope = ADSREnvelope(**kwargs)
         # a simple element has values set externally and does not update
-        self.simple = False
+        self.simple = simple
         self.trigger_state = 0
-        self.trigger_toggle = False
+        self.trigger_toggle = trigger_toggle
         self.effects = []
         self.pre_update_effects = []
 
-        # self.logger = logging.getLogger(
-                # "%s.%s.%s" % (__name__, "LightElement", self.name))
-
     def bell_reset(self):
+        # TODO is this method still needed?
         self._off_trigger()
 
     def update(self, show):
+        """
+        The update method is called once per iteration of the main show loop.
+        """
         if (self.simple or not (self.intensity or self.trigger_intensity)):
             # light is inactive or in sustain mode
             return self.intensity
@@ -160,8 +190,8 @@ class BaseLightElement(object):
         # else redundant trigger
 
     def off(self):
-        """convenience for off"""
-        self.trigger(0.0)
+        """convenience for off, synonym for trigger(0)"""
+        self.trigger(0)
 
 
 class LightElement(BaseLightElement, LightingNetworkElement):
