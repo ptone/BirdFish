@@ -110,11 +110,19 @@ class BaseLightElement(object):
         # TODO is this method still needed?
         self._off_trigger()
 
+    @property
+    def update_active(self):
+        """
+        This property is the API for any class to determine whether updates
+        should continue to be passed to this element.
+        """
+        return self.trigger_intensity
+
     def update(self, show):
         """
         The update method is called once per iteration of the main show loop.
         """
-        if (self.simple or not (self.intensity or self.trigger_intensity)):
+        if (self.simple or not (self.update_active)):
             # light is inactive or in sustain mode
             return self.intensity
         if self.bell_mode and self.adsr_envelope.segments[0].index == 1:
@@ -296,13 +304,11 @@ class LightGroup(BaseLightElement):
         self.name = kwargs.get("name", "lightgroup")
         # TODO need min and max intensity - at a more baseclass level
         self.max_intensity = 1.0
-        self.update_active = False
 
     def trigger(self, sig_intensity, **kwargs):
         if sig_intensity:
             intensity = min(self.max_intensity, sig_intensity)
             self.trigger_state = 1
-            self.update_active = True
         else:
             self.trigger_state = 0
             intensity = 0.0
@@ -314,18 +320,15 @@ class LightGroup(BaseLightElement):
         # the group element always has a pseudo-intensity of 1
         [e.set_intensity(e.intensity * intensity) for e in self.elements]
 
+    @property
+    def update_active(self):
+        is_active = any([e.update_active for e in self.elements])
+        return is_active
+
     def update(self, show):
         if self.trigger_state or self.update_active:
-            elements_active = False
             for element in self.elements:
                 element.update(show)
-                # determine if any elements are still active - ie in release
-                elements_active = elements_active or element.trigger_intensity
-            # set our own active state based on whether
-            # any element is still active
-            # TODO for consistancy sake, should this just be represented as
-            # trigger_intensity of the group?
-            self.update_active = elements_active
 
             # TODO - setting trigger_intensity here messes up chases
             # but without it need a better way to remove spent spawn
