@@ -818,6 +818,19 @@ class LightShow(object):
             return frame
         return sum(self.recent_frames) / frame_count
 
+    def step(self, count=1, speed=1):
+        """
+        Simulate a step or steps in main loop
+        """
+        for i in range(count):
+            self.timecode += self.frame_delay
+            self.time_delta = self.frame_delay
+            self.update()
+            for n in self.networks:
+                n.send_data()
+            if speed and count > 1 and i < (count - 1):
+                time.sleep((1 / speed) * self.frame_delay)
+
     def run_live(self):
         self.init_show()
         self.show_start = time.time()
