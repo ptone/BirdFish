@@ -102,6 +102,7 @@ class BaseLightElement(object):
         # a simple element has values set externally and does not update
         self.simple = simple
         self.trigger_state = 0
+        self.last_update = -1
         self.trigger_toggle = trigger_toggle
         self.effects = []
         self.pre_update_effects = []
@@ -322,13 +323,16 @@ class LightGroup(BaseLightElement):
 
     @property
     def update_active(self):
-        is_active = any([e.update_active for e in self.elements])
-        return is_active
+        return any([e.update_active for e in self.elements])
 
     def update(self, show):
         if self.trigger_state or self.update_active:
             for element in self.elements:
-                element.update(show)
+                if element.last_update != show.timecode:
+                    # avoide updated sub elements twice if they are also in the
+                    # main show list of elements
+                    element.update(show)
+                    element.last_update = show.timecode
 
             # TODO - setting trigger_intensity here messes up chases
             # but without it need a better way to remove spent spawn
@@ -366,7 +370,11 @@ class Chase(LightGroup):
 
     def _off_trigger(self):
         self.trigger_state = 0
+        # TODO - setting trigger intensity to 0 here - works for sweeps
+        # but non-sweep has to use trigger 1 as it doesn't have access to the
+        # original trigger_intensity
         self.trigger_intensity = 0
+
         # if self.bell_mode:
             # TODO does bell apply to chase classes?
             # ignore release in bell mode
@@ -489,7 +497,12 @@ class Chase(LightGroup):
                 self.center_position = self.move_envelope.update(
                         show.time_delta)
 
+    @property
+    def update_active(self):
+        return self.moving or super(Chase, self).update_active
+
     def update(self, show):
+        # super handles sending update to sub-elements
         super(Chase, self).update(show)
         # always keep time delta updated
         if not self.trigger_intensity:
@@ -512,6 +525,8 @@ class Chase(LightGroup):
         # TODO needs to handle reverse situations better
         if self.last_center is None:
             self.last_center = self.start_pos
+        # TODO need to determine whether there shell be a generic anti-alias
+        # support - Pulse currently does this in its own render
         current_center = int(self.center_position)
         if self.sweep:
             # trigger everything up to current center
@@ -525,18 +540,37 @@ class Chase(LightGroup):
             # trigger only the width
             [e.trigger(0) for e in self.elements]
             if current_center > self.moveto:
-                [e.trigger(self.trigger_intensity) for
-                        e in self.elements[
-                            current_center:(current_center + self.width)]]
+                # note, currently there is no difference between start and end
+                # based on direction, the width is always to the left of the
+                # current center - more of a sweep effect can be made with
+                # bell modes on the sub elements
+                start = max(self.lower_bound, current_center - self.width)
+                end = current_center
             else:
-                [e.trigger(self.trigger_intensity) for
-                        e in self.elements[
-                            current_center - self.width:current_center]]
+                start = max(self.lower_bound, current_center - self.width)
+                end = current_center
+            if self.sweep:
+                intensity = self.trigger_intensity
+            else:
+                # TODO - we can't get the original trigger intensity anymore
+                # it shouldn't be 1 - the fix will be to make sweep renders
+                # above work with the trigger state instead of intensity?
+                intensity = 1
+            [e.trigger(intensity) for e in self.elements[start:end]]
         self.last_center = current_center
 
+    @property
+    def upper_bound(self):
+        return max(self.start_pos, self.end_pos)
 
-class Spawner(object):
+    @property
+    def lower_bound(self):
+        return min(self.start_pos, self.end_pos)
+
+
+class Spawner(BaseLightElement):
     def __init__(self, *args, **kwargs):
+        super(Spawner, self).__init__(*args, **kwargs)
         self.model = kwargs.get('model', None)
         self.show = kwargs.get('show')
         self.network = kwargs.get('network')
@@ -621,7 +655,7 @@ class HitPulse(Spawner):
         for key, e in self.spawned.items():
             # TODO need a more abstract way of determining if element is
             # 'complete'
-            if e.trigger_intensity == 0:
+            if not e.update_active:
                 # print 'removing element for ', key
                 self.show.remove_element(e)
                 remove.append(key)
@@ -639,7 +673,6 @@ class HitPulse(Spawner):
             key = kwargs['key'][1]
             spawned_pair = self.spawn(key=key)
             spawned_pair.trigger(intensity)
-            print key
         else:
             # off trigger
             key = kwargs['key'][1]
@@ -875,6 +908,9 @@ class LightShow(object):
         """The main show update command"""
         # self.scenemanager.update(self)
         for element in self.elements:
-            element.update(self)
+            if element.last_update != self.timecode:
+                # avoid updating the same element twice
+                element.update(self)
+                element.last_update = self.timecode
         for e in self.effects:
             e.update(self)
