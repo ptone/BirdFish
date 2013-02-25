@@ -39,7 +39,7 @@ class OSCDispatcher(OSCServer):
             })
 
     def add_map(self, message_key, recv, attribute, in_range=(0, 1),
-            out_range=(0, 1)):
+            out_range=(0, 1), data_member=0):
         # TODO use namedtuple instead of dict
         self.observers[message_key].append({
             'type': 'map',
@@ -47,6 +47,7 @@ class OSCDispatcher(OSCServer):
             'in_range': in_range,
             'out_range': out_range,
             'attribute': attribute,
+            'data_member': data_member,
             })
 
     def remove_observer(self, element):
@@ -55,7 +56,8 @@ class OSCDispatcher(OSCServer):
                 [x for x in self.observers[message] if x[0] != element]
 
     def dispatch(self, addr, tags, data, client_address):
-        print addr, data, client_address
+        if not "accxyz" in addr:
+            print addr, data, client_address
         message_key = addr
         if message_key in self.observers:
             for destination in self.observers[message_key]:
@@ -64,9 +66,11 @@ class OSCDispatcher(OSCServer):
                     vel = data[0]
                     destination['receiver'].trigger(vel, key=message_key)
                 elif destination['type'] == 'map':
-                    in_value = data[0]
-                    assert (destination['in_range'][0] <= in_value
-                            <= destination['in_range'][1])
+                    in_value = data[destination['data_member']]
+                    if not (destination['in_range'][0] <= in_value
+                            <= destination['in_range'][1]):
+                        # input value out of range
+                        continue
                     if destination['in_range'] == destination['out_range']:
                         out_value = in_value
                     else:
