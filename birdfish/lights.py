@@ -449,6 +449,14 @@ class Chase(LightGroup):
         if self.trigger_state:
             self.moving = True
 
+    def _get_move_toward(self):
+        return self.moveto
+
+    def _set_move_toward(self, value):
+        self.setup_move(moveto=value)
+
+    move_toward = property(_get_move_toward, _set_move_toward)
+
     def _move_completed(self):
         # called at the end of a move, for looping, pong, etc
         # TODO while pulse paused at one end - this is firing multiple
