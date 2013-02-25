@@ -576,29 +576,49 @@ class Spawner(BaseLightElement):
         self.network = kwargs.get('network')
         self.spawned = {}
         self.channels = []
+        self.unique_per_key = True
+        self._spawn_counter = 0
 
-    def spawn(self):
+    def spawn(self, key):
+        if self.unique_per_key and key in self.spawned:
+            return self.spawned[key]
         instance = deepcopy(self.model)
-        # assuming we have elements - no point in spawning simple items
-        instance.elements = self.model.elements
         self.show.add_element(instance)
-        # self.network.add_element(instance)
+        if self.unique_per_key:
+            self.spawned[key] = instance
+        else:
+            self.spawned[self._spawn_counter] = instance
+            self._spawn_counter += 1
+        # TODO need a recurse way to add only the end elements
+        # that actually have channels
+        [self.network.add_element(e) for e in instance.elements]
+        try:
+            instance.spawned()
+        except AttributeError:
+            pass
         return instance
 
     def update(self, show):
         # remove completed items
-        for e in self.spawned:
-            if e.move_complete:
+        remove = []
+        # return
+        for key, e in self.spawned.items():
+            # TODO need a more abstract way of determining if element is
+            # 'complete'
+            if not e.update_active:
+                # print 'removing element for ', key
                 self.show.remove_element(e)
-                self.spawned.remove(e)
+                remove.append(key)
+        for key in remove:
+            del(self.spawned[key])
 
     def trigger(self, intensity, **kwargs):
         if intensity > 0:
-            new_spawn = self.spawn()
+            key = kwargs['key'][1]
+            new_spawn = self.spawn(key)
             new_spawn.bell_mode = True
             new_spawn.continuation_mode = None
             new_spawn.trigger(intensity)
-            self.spawned.append(new_spawn)
 
 
 class HitPulse(Spawner):
@@ -647,20 +667,6 @@ class HitPulse(Spawner):
         self.spawned[key] = chase_pair
         self.show.add_element(chase_pair)
         return chase_pair
-
-    def update(self, show):
-        # remove completed items
-        remove = []
-        # return
-        for key, e in self.spawned.items():
-            # TODO need a more abstract way of determining if element is
-            # 'complete'
-            if not e.update_active:
-                # print 'removing element for ', key
-                self.show.remove_element(e)
-                remove.append(key)
-        for key in remove:
-            del(self.spawned[key])
 
     def trigger(self, intensity, **kwargs):
         if intensity > 0:
