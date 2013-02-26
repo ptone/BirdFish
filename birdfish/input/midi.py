@@ -1,9 +1,8 @@
 from __future__ import division
 
-from collections import defaultdict
+from birdfish.input.base import BaseDispatcher
 import protomidi.portmidi as pypm
 import threading
-import os
 
 
 class MidiReader(threading.Thread):
@@ -95,42 +94,11 @@ class MessageDispatcher(threading.Thread):
         threading.Thread.join(self, timeout)
 
 
-class MidiDispatcher(threading.Thread):
-    daemon = True
+class MidiDispatcher(BaseDispatcher):
 
-    def __init__(self, device):
-        threading.Thread.__init__(self, name="dispatcher")
+    def __init__(self, device, *args, **kwargs):
         self._input = pypm.Input(device)
-        self._stopevent = threading.Event()
-        self.file = None
-        self.file_obj = None
-        self.logger = None
-        self.observers = defaultdict(list)
-
-    def add_observer(self, message_key, recv, type='trigger'):
-        self.observers[message_key].append({'receiver': recv, 'type': type})
-
-    def add_trigger(self, message_key, recv):
-        self.observers[message_key].append({
-            'type': 'trigger',
-            'receiver': recv,
-            })
-
-    def add_map(self, message_key, recv, attribute, in_range=(0, 1),
-            out_range=(0, 1)):
-        # TODO use namedtuple instead of dict
-        self.observers[message_key].append({
-            'type': 'map',
-            'receiver': recv,
-            'in_range': in_range,
-            'out_range': out_range,
-            'attribute': attribute,
-            })
-
-    def remove_observer(self, element):
-        for message in self.observers:
-            self.observers[message] = \
-                [x for x in self.observers[message] if x[0] != element]
+        super(MidiDispatcher, self).__init__(*args, **kwargs)
 
     def dispatch(self, message):
         """take a midi message and dispatch it to object who are interested"""
@@ -166,45 +134,18 @@ class MidiDispatcher(threading.Thread):
             print message
             pass
 
-    def run(self):
-        print "%s starts" % (self.getName(),)
-        if self.file:
-            i = 1
-            base, ext = os.path.splitext(self.file)
-            while os.path.exists(self.file):
-                self.file = "%s-%s%s" % (base, i, ext)
-                i += 1
-                # raise ValueError("output file exists")
-            # TODO
-            # f = self.file_obj = open(self.file,'w')
-        while not self._stopevent.is_set():
-            if self._input.poll():
-                d = self._input.recv()
-                if d:
-                    self.dispatch(d)
-                    if self.file:
-                        pass
-                        # TODO
-                        # @@ currently can not set file after dispatcher
-                        # started - would be nice to could also use start
-                        # trigger?  The entire file function needs to be
-                        # replaced.  one approach would be to have
-                        # a "universal" reciever which would get every dispatch
-                        # from every input plugin the challenge will be to sync
-                        # the midi clock
-
-            self._stopevent.wait(.02)
-        print "%s ends" % (self.getName(),)
-
-    def join(self, timeout=None):
-        self._stopevent.set()
-        # pypm.quit()
-        if self.file:
-            try:
-                self.file_obj.close()
-            except:
-                pass
-        threading.Thread.join(self, timeout)
-
-    def stop(self):
-        self.join()
+    def update(self):
+        if self._input.poll():
+            d = self._input.recv()
+            if d:
+                self.dispatch(d)
+                if self.file:
+                    pass
+                    # TODO
+                    # @@ currently can not set file after dispatcher
+                    # started - would be nice to could also use start
+                    # trigger?  The entire file function needs to be
+                    # replaced.  one approach would be to have
+                    # a "universal" reciever which would get every dispatch
+                    # from every input plugin the challenge will be to sync
+                    # the midi clock
