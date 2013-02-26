@@ -239,7 +239,7 @@ def jump_time(tween, value, b, c, d):
     for i in range(100):
         temp_value = tween(current_time, b, c, d)
         if val_max >= temp_value >= val_min:
-            print "test value: %s, new time: %s" % (temp_value, current_time)
+            # print "test value: %s, new time: %s" % (temp_value, current_time)
             return current_time
         current_time += time_slice
     print current_time
