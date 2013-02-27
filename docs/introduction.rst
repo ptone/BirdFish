@@ -56,6 +56,8 @@ Events are the things that happen at a specific time to control an element. You
 can think of these roughly as the nubs on a music box wheel, or the notches in
 a player piano sheet.
 
+.. image:: /images/concepts.png
+
 There are two types of events:
 
 Trigger Events
