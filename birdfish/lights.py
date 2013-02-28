@@ -214,9 +214,6 @@ class LightElement(BaseLightElement, LightingNetworkElement):
 
 
 class RGBLight(LightElement):
-    RED = (1, 0, 0)
-    GREEEN = (0, 1, 0)
-    BLUE = (0, 0, 1)
 
     def __init__(self, *args, **kwargs):
         super(RGBLight, self).__init__(*args, **kwargs)
