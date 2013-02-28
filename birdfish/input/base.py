@@ -3,6 +3,15 @@ import os
 from collections import defaultdict
 
 
+class Dispatcher(object):
+
+    def __init__(self, *args, **kwargs):
+        self.file = None
+        self.file_obj = None
+        self.logger = None
+        self.observers = defaultdict(list)
+
+
 class BaseDispatcher(threading.Thread):
 
     daemon = True
@@ -60,7 +69,7 @@ class BaseDispatcher(threading.Thread):
             # f = self.file_obj = open(self.file,'w')
         while not self._stopevent.is_set():
             self.update()
-            self._stopevent.wait(.02)
+            self._stopevent.wait(.01)
         print "%s ends" % (self.getName(),)
 
     def join(self, timeout=None):
