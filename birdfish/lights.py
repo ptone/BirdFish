@@ -10,6 +10,7 @@ import random
 import tween
 from envelope import ADSREnvelope, EnvelopeSegment
 # from scene import SceneManager
+from birdfish.colors import DIYC_DIM
 from birdfish.output.base import DefaultNetwork
 
 from birdfish.log_setup import logger
@@ -34,6 +35,7 @@ class LightingNetworkElement(object):
         self.channels = {}
         self.intensity = 0
         self.channels[start_channel] = 'intensity'
+        self.gamma = None
 
     def update_data(self, data):
         """
@@ -54,9 +56,11 @@ class LightingNetworkElement(object):
             # data structure - means forcing to bytes here instead
             # of output network level - practically this is OK as all
             # networks are using 1 byte max per channel
-
+            val = int(val * 255)
+            if self.gamma:
+                val = self.gamma[val]
             # Here the channel values are highest value wins
-            data[channel - 1] = max(data[channel - 1], int(val * 255))
+            data[channel - 1] = max(data[channel - 1], val)
 
 
 class BaseLightElement(object):
@@ -227,6 +231,7 @@ class RGBLight(LightElement):
         self.channels[start_channel] = 'red'
         self.channels[start_channel + 1] = 'green'
         self.channels[start_channel + 2] = 'blue'
+        self.gamma = DIYC_DIM
         # set up rgb values
 
     def set_intensity(self, intensity):
