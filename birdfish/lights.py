@@ -281,16 +281,20 @@ class RGBLight(LightElement):
 
     def _set_hue(self, hue):
         self._hue = hue
-        self.update_rgb()
 
     def _get_saturation(self):
         return self._saturation
 
     def _set_saturation(self, saturation):
         self._saturation = saturation
-        self.update_rgb()
         # TODO concept of intensity should be converted to raw RGB for base RGB
         # light no assumption of 4th channel
+
+    def update_data(self, data):
+        # update RGB only once per cycle here, instead of
+        # every hue update
+        self.update_rgb()
+        super(RGBLight, self).update_data(data)
 
     hue = property(_get_hue, _set_hue)
     saturation = property(_get_saturation, _set_saturation)
