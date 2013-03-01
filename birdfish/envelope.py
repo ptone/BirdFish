@@ -442,10 +442,10 @@ class ColorEnvelope(object):
     def add_hue_shift(self, start=0, end=1, duration=5, shape=tween.LINEAR):
         self._add_shift(start, end, duration, shape, self.hue_envelope)
 
-    def add_saturation_shift(self, start=0, end=1, duration=5, shape=tween.LINEAR):
+    def add_saturation_shift(self, start=1, end=1, duration=5, shape=tween.LINEAR):
         self._add_shift(start, end, duration, shape, self.saturation_envelope)
 
-    def add_intensity_shift(self, start=0, end=1, duration=5, shape=tween.LINEAR):
+    def add_intensity_shift(self, start=1, end=1, duration=5, shape=tween.LINEAR):
         self._add_shift(start, end, duration, shape, self.intensity_envelope)
 
     def _color_update(self, time_delta):
