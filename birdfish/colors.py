@@ -1,3 +1,5 @@
+from __future__ import division
+
 RED = 0
 GREEN = 0.333333333
 BLUE = 0.666666666
@@ -13,5 +15,5 @@ def generate_gamma_table(steps=255, size=255, gamma=2.5):
     lookup = {}
     for i in range(steps + 1):
         gval = int(size * (((size / steps * (i + 1)) / size) ** gamma))
-        lookup[i] = gval
+        lookup[i] = min(gval, size)
     return lookup
