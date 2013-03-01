@@ -37,6 +37,14 @@ class LightingNetworkElement(object):
         self.channels[start_channel] = 'intensity'
         self.gamma = None
 
+    def update_channels(self):
+        # apply dimming or other adjustments
+        if self.gamma:
+            # TODO for now gamma is as an 8 bit lookup
+            dmx_val = int(self.intensity * 255)
+            val = self.gamma[dmx_val]
+            self.intensity = val / 255
+
     def update_data(self, data):
         """
         This method is called by the network containing this item in order to
@@ -45,6 +53,7 @@ class LightingNetworkElement(object):
         Data is an array of data (ie DMX) that should be updated
         with this light's channels
         """
+        self.update_channels()
         for channel, value in self.channels.items():
             try:
                 # targeted optimization:
@@ -56,11 +65,8 @@ class LightingNetworkElement(object):
             # data structure - means forcing to bytes here instead
             # of output network level - practically this is OK as all
             # networks are using 1 byte max per channel
-            val = int(val * 255)
-            if self.gamma:
-                val = self.gamma[val]
             # Here the channel values are highest value wins
-            data[channel - 1] = max(data[channel - 1], val)
+            data[channel - 1] = max(data[channel - 1], int(val * 255))
 
 
 class BaseLightElement(object):
@@ -232,6 +238,7 @@ class RGBLight(LightElement):
         self.channels[start_channel + 1] = 'green'
         self.channels[start_channel + 2] = 'blue'
         self.gamma = DIYC_DIM
+        self.normalize = False
         # set up rgb values
 
     def set_intensity(self, intensity):
@@ -268,8 +275,10 @@ class RGBLight(LightElement):
             intensity = self.intensity
         # this funct takes all 0-1 values
         r, g, b = colorsys.hsv_to_rgb(hue, saturation, intensity)
-        # here intensity is assumed to be full, as HSV to RGB sets RGB values
-        # accordingly
+        if self.normalize and any((r, g, b)):
+            maxval = max((r, g, b))
+            adj = maxval / 1
+            r, g, b = colorsys.hsv_to_rgb(hue, saturation, intensity * adj)
         self.red = r
         self.green = g
         self.blue = b
@@ -290,11 +299,11 @@ class RGBLight(LightElement):
         # TODO concept of intensity should be converted to raw RGB for base RGB
         # light no assumption of 4th channel
 
-    def update_data(self, data):
+    def update_channels(self):
         # update RGB only once per cycle here, instead of
         # every hue update
+        super(RGBLight, self).update_channels()
         self.update_rgb()
-        super(RGBLight, self).update_data(data)
 
     hue = property(_get_hue, _set_hue)
     saturation = property(_get_saturation, _set_saturation)
