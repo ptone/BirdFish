@@ -81,6 +81,9 @@ class ColorShift(BaseEffect, ColorEnvelope):
     def __init__(self, shift_amount=0, target=0, **kwargs):
         super(ColorShift, self).__init__(**kwargs)
         ColorEnvelope.__init__(self, **kwargs)
+        self.hue = 0
+        self.saturation = 0
+        self.intensity = 1
 
     def _on_trigger(self, intensity, **kwargs):
         self.reset()
@@ -88,14 +91,20 @@ class ColorShift(BaseEffect, ColorEnvelope):
     def update(self, show, targets=None):
         if self.trigger_state:
             targets = self.get_targets(targets)
-            hue, sat, intensity = self._color_update(show.time_delta)
+            # TODO need to make this anti duplicate calling logic
+            # more effects generic - maybe effects specific stuff goes
+            # in a render method
+            if self.last_update != show.timecode:
+                self.hue, self.saturation, self.intensity = self._color_update(
+                        show.time_delta)
+                self.last_update = show.timecode
             for target in targets:
-                if hue is not None:
-                    target.hue = hue
-                if sat is not None:
-                    target.saturation = sat
-                if intensity is not None:
-                    target.set_intensity(intensity)
+                if self.hue is not None:
+                    target.hue = self.hue
+                if self.saturation is not None:
+                    target.saturation = self.saturation
+                if self.intensity is not None:
+                    target.set_intensity(self.intensity)
 
 
 class Twinkle(BaseEffect):
