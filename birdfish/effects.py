@@ -71,6 +71,29 @@ class BaseEffect(BaseLightElement):
         for element in self.targets:
             element.set_intensity(0)
 
+    def update(self, show, targets=None):
+        raise NotImplementedError
+
+
+class EnvelopeMap(BaseEffect, Envelope):
+
+    def __init__(self, attr, *args, **kwargs):
+        BaseEffect.__init__(self, *args, **kwargs)
+        Envelope.__init__(self, *args, **kwargs)
+        self.attr = attr
+
+    def _off_trigger(self, intensity, **kwargs):
+        self.reset()
+
+    def update(self, show, targets=None):
+        if self.trigger_state:
+            targets = self.get_targets(targets)
+            if self.last_update != show.timecode:
+                val = Envelope.update(self, show.time_delta)
+                self.last_update = show.timecode
+            for target in targets:
+                setattr(target, self.attr, val)
+
 
 class ColorShift(BaseEffect, ColorEnvelope):
     # TODO notes:
