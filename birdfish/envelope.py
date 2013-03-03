@@ -157,6 +157,23 @@ class Envelope(EnvelopeSegment):
     def current_segment(self):
         return self.segments[self.index]
 
+    def add_segment(self,
+            start=0,
+            change=1,
+            end=None,
+            duration=1,
+            shape=tween.LINEAR):
+
+        if end is not None:
+            change = end - start
+        seg = EnvelopeSegment(
+                start=start,
+                change=change,
+                duration=duration,
+                tween=shape,
+                )
+        self.segments.append(seg)
+
     def get_profile(self):
         logger.debug("Envelop %s profile property, index: %s" % (self.label,
             self.index))
