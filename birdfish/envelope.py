@@ -304,7 +304,8 @@ class TriggeredEnvelope(Envelope):
         can be used to scale max value on callers end - ie midi velocity
         value of 0 is also implicit state=0
         """
-        assert len(self.segments) == 2, "too many segments for a trigger envelope"
+        assert len(self.segments) == 2, "too many segments for a \
+        trigger envelope"
         # TODO I think the whole value arg and associated code needs to go
         # this is only about state
         if value == 0:
@@ -453,16 +454,20 @@ class ColorEnvelope(object):
             warnings.warn("Envelope disabled")
 
     def set_loop(self, loop):
-        for env in (self.hue_envelope, self.saturation_envelope, self.intensity_envelope):
+        for env in (self.hue_envelope, self.saturation_envelope,
+                self.intensity_envelope):
             env.loop = loop
 
-    def add_hue_shift(self, start=0, end=1, duration=5, shape=tween.LINEAR):
+    def add_hue_shift(self, start=0, end=1, duration=5,
+            shape=tween.LINEAR):
         self._add_shift(start, end, duration, shape, self.hue_envelope)
 
-    def add_saturation_shift(self, start=1, end=1, duration=5, shape=tween.LINEAR):
+    def add_saturation_shift(self, start=1, end=1, duration=5,
+            shape=tween.LINEAR):
         self._add_shift(start, end, duration, shape, self.saturation_envelope)
 
-    def add_intensity_shift(self, start=1, end=1, duration=5, shape=tween.LINEAR):
+    def add_intensity_shift(self, start=1, end=1, duration=5,
+            shape=tween.LINEAR):
         self._add_shift(start, end, duration, shape, self.intensity_envelope)
 
     def _color_update(self, time_delta):
@@ -486,7 +491,8 @@ class ColorEnvelope(object):
         return self._color_update(time_delta)
 
     def reset(self):
-        for env in [self.hue_envelope, self.saturation_envelope, self.intensity_envelope]:
+        for env in [self.hue_envelope, self.saturation_envelope,
+                self.intensity_envelope]:
             if env is not None:
                 env.reset()
 
