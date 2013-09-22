@@ -4,6 +4,8 @@ import array
 class BaseNetwork(object):
 
     def __init__(self):
+        # TODO - should a network have a keep alive attr?
+        self.dmx_keep_alive = True
         self.elements = []
         self.data = array.array('B', ())
 
