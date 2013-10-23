@@ -25,7 +25,7 @@ class BaseNetwork(object):
 
     def add_element(self, element):
         if element not in self.elements:
-            self.elements.append(element)
+            self.elements.append(element.device)
             return True
         return False
         # TODO element.network=self? will this ever be needed?
