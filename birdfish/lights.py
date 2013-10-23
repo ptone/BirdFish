@@ -246,7 +246,8 @@ class BaseLightElement(object):
     def set_intensity(self, intensity):
         # mostly to be overridden by subclasses
         self._intensity = intensity
-        self.device.intensity = intensity
+        if hasattr(self, 'device'):
+            self.device.intensity = intensity
 
     def get_intensity(self):
         return self._intensity
@@ -971,7 +972,6 @@ class LightShow(object):
                 n.send_data()
             if self.frame == 40:
                 print [e.channels for e in self.networks[1].elements]
-                # print [e.device.channels for e in self.elements if hasattr(e, 'device')]
                 # print('framerate: ', 1 / self.frame_delay, " Remainder: ",
                         # remainder)
                 self.frame = 0
