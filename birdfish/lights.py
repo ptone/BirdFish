@@ -35,7 +35,7 @@ class PhysicalDevice(object):
         self.intensity = 0
         self.channels[start_channel] = 'intensity'
         self.gamma = None
-        self.start_channel = kwargs.get('start_channel', 1)
+        self.start_channel = start_channel
 
     def update_channels(self):
         # apply dimming or other adjustments
@@ -192,6 +192,7 @@ class BaseLightElement(object):
         self.trigger_toggle = trigger_toggle
         self.effects = []
         self.pre_update_effects = []
+        self._intensity = 0
 
     def bell_reset(self):
         # TODO is this method still needed?
@@ -239,11 +240,18 @@ class BaseLightElement(object):
         #     print int(self.intensity)
         for effect in self.effects:
             effect.update(show, [self])
+        self.device.set_intensity(self.intensity)
         return self.intensity
 
     def set_intensity(self, intensity):
         # mostly to be overridden by subclasses
-        self.intensity = intensity
+        self._intensity = intensity
+        self.device.intensity = intensity
+
+    def get_intensity(self):
+        return self._intensity
+
+    intensity = property(get_intensity, set_intensity)
 
     def _on_trigger(self, intensity, **kwargs):
         pass
@@ -257,7 +265,7 @@ class BaseLightElement(object):
     def trigger(self, intensity, **kwargs):
         # @@ need toggle mode implementation here
         if self.simple:
-            self.intensity = intensity
+            self.set_intensity(intensity)
             return
         if intensity > 0 and self.trigger_state == 0:
             if self.bell_mode:
@@ -266,7 +274,7 @@ class BaseLightElement(object):
             [x.trigger(intensity) for x in self.effects]
             self.trigger_intensity = intensity
             logger.debug("%s: trigger on @ %s" % (self.name, intensity))
-            self.intensity = 0.0  # reset light on trigger
+            self.set_intensity(0.0)  # reset light on trigger
             self.adsr_envelope.trigger(state=1)
             self._on_trigger(intensity, **kwargs)
         elif intensity == 0 and (self.trigger_state and not self.trigger_toggle
@@ -961,9 +969,11 @@ class LightShow(object):
             # pre_send = time.time()
             for n in self.networks:
                 n.send_data()
-            if self.frame == 20:
-                print('framerate: ', 1 / self.frame_delay, " Remainder: ",
-                        remainder)
+            if self.frame == 40:
+                print [e.channels for e in self.networks[1].elements]
+                # print [e.device.channels for e in self.elements if hasattr(e, 'device')]
+                # print('framerate: ', 1 / self.frame_delay, " Remainder: ",
+                        # remainder)
                 self.frame = 0
 
     def update(self):
