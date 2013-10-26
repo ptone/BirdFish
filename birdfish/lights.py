@@ -45,6 +45,10 @@ class PhysicalDevice(object):
             val = self.gamma[dmx_val]
             self.intensity = val / 255
 
+    def set_intensity(self, intensity):
+        # TODO note this setter may be superfluos
+        self.intensity = intensity
+
     def update_data(self, data):
         """
         This method is called by the network containing this item in order to
@@ -76,73 +80,15 @@ class RGBDevice(PhysicalDevice):
         self.red = 0
         self.green = 0
         self.blue = 0
-        self._hue = 0.0
-        self._saturation = 0
         self.channels[self.start_channel] = 'red'
         self.channels[self.start_channel + 1] = 'green'
         self.channels[self.start_channel + 2] = 'blue'
         self.gamma = DIYC_DIM
-        self.normalize = False
-
-    def set_intensity(self, intensity):
-        self.intensity = intensity
-        self.update_rgb()
-
-    # @@ need to address the attribute of intensity in the context of RGB
-    def update_hue(self):
-        """
-        updates hue property from RGB values, RGB is always updated when hue
-        changed
-        """
-        adjusted_rgb = [x * self.intensity for x in [
-            self.red, self.green, self.blue]]
-        h, s, v = colorsys.rgb_to_hsv(*tuple(adjusted_rgb))
-        self._hue = h
-        self._saturation = s
-
-    def update_rgb(self):
-        hue = self._hue
-        saturation = self._saturation
-        if 'intensity' in self.channels.values():
-            # if the fixture has its own intensity slider - always calc RGB
-            # values at full intensity
-            intensity = 1.0
-        else:
-            intensity = self.intensity
-        # this funct takes all 0-1 values
-        r, g, b = colorsys.hsv_to_rgb(hue, saturation, intensity)
-        if self.normalize and any((r, g, b)):
-            maxval = max((r, g, b))
-            adj = maxval / 1
-            r, g, b = colorsys.hsv_to_rgb(hue, saturation, intensity * adj)
-        self.red = r
-        self.green = g
-        self.blue = b
-
-    def _get_hue(self):
-        # TODO need to update with function in case r,g,b were updated other
-        # than through hue
-        return self._hue
-
-    def _set_hue(self, hue):
-        self._hue = hue
-
-    def _get_saturation(self):
-        return self._saturation
-
-    def _set_saturation(self, saturation):
-        self._saturation = saturation
-        # TODO concept of intensity should be converted to raw RGB for base RGB
-        # light no assumption of 4th channel
 
     def update_channels(self):
         # update RGB only once per cycle here, instead of
         # every hue update
         super(RGBDevice, self).update_channels()
-        self.update_rgb()
-
-    hue = property(_get_hue, _set_hue)
-    saturation = property(_get_saturation, _set_saturation)
 
 
 class BaseLightElement(object):
@@ -319,32 +265,66 @@ class RGBLight(LightElement):
             self.device = RGBDevice(*args, **kwargs)
         else:
             self.device = device_element
+        self._hue = 0.0
+        self._saturation = 0
+        self.normalize = False
 
     def update(self, show):
         return_value = super(RGBLight, self).update(show)
         # TODO - this funciton needed when tweening hue - but can't be used
         # tweening RGB directly
-        # self.update_rgb()
+        self.update_rgb()
         return return_value
+
+    def update_rgb(self):
+        hue = self._hue
+        saturation = self._saturation
+        if 'intensity' in self.device.channels.values():
+            # if the fixture has its own intensity slider - always calc RGB
+            # values at full intensity
+            intensity = 1.0
+        else:
+            intensity = self.intensity
+        # this funct takes all 0-1 values
+        r, g, b = colorsys.hsv_to_rgb(hue, saturation, intensity)
+        if self.normalize and any((r, g, b)):
+            maxval = max((r, g, b))
+            adj = maxval / 1
+            r, g, b = colorsys.hsv_to_rgb(hue, saturation, intensity * adj)
+        self.red = self.device.red = r
+        self.green = self.device.green = g
+        self.blue = self.device.blue = b
+
+    # TODO need R, G, B setters - and an update hue mirror
+    #
 
     def _get_hue(self):
         # TODO need to update with function in case r,g,b were updated other
         # than through hue
-        return self.device._hue
+        return self._hue
 
     def _set_hue(self, hue):
-        self.device._hue = hue
+        self._hue = hue
 
     def _get_saturation(self):
-        return self.device._saturation
+        return self._saturation
 
     def _set_saturation(self, saturation):
-        self.device._saturation = saturation
+        self._saturation = saturation
         # TODO concept of intensity should be converted to raw RGB for base RGB
         # light no assumption of 4th channel
 
-    def update_rgb(self):
-        self.device.update_rgb()
+    # @@ need to address the attribute of intensity in the context of RGB
+    def update_hue(self):
+        """
+        updates hue property from RGB values, RGB is always updated when hue
+        changed
+        """
+        adjusted_rgb = [x * self.intensity for x in [
+            self.red, self.green, self.blue]]
+        h, s, v = colorsys.rgb_to_hsv(*tuple(adjusted_rgb))
+        self._hue = h
+        self._saturation = s
 
     hue = property(_get_hue, _set_hue)
     saturation = property(_get_saturation, _set_saturation)
