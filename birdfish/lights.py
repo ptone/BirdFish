@@ -951,7 +951,7 @@ class LightShow(object):
             for n in self.networks:
                 n.send_data()
             if self.frame == 40:
-                print [e.channels for e in self.networks[1].elements]
+                # print [e.channels for e in self.networks[1].elements]
                 # print('framerate: ', 1 / self.frame_delay, " Remainder: ",
                         # remainder)
                 self.frame = 0
