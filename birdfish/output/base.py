@@ -24,7 +24,7 @@ class BaseNetwork(object):
         self.data = array.array('B', (0,) * len(self.data))
 
     def add_element(self, element):
-        if element not in self.elements:
+        if element.device not in self.elements:
             self.elements.append(element.device)
             return True
         return False
