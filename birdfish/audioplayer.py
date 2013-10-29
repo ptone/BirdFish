@@ -56,8 +56,32 @@ class AudioPlayer(threading.Thread):
         self.join()
 
     def pause(self):
+        # TODO not implemented
         self.paused = True
 
     def trigger(self, data):
         if data:  # ignore off signal
             self.start()
+
+
+class Player(object):
+    def __init__(self, wavfile):
+        self.wavfile = wavfile
+        self.audio = None
+        self.last_audio = None
+        self.reset()
+
+    def reset(self):
+        # keeping a reference so the thread can join
+        self.last_audio = self.audio
+        self.audio = AudioPlayer(self.wavfile)
+
+    def play(self):
+        self.audio.start()
+        while not self.audio._stopevent.is_set():
+            pass
+        self.reset()
+
+    def trigger(self, data, **kwargs):
+        if data:  # ignore off
+            self.play()

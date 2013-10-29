@@ -16,7 +16,7 @@ from birdfish.output.base import DefaultNetwork
 from birdfish.log_setup import logger
 
 
-class LightingNetworkElement(object):
+class PhysicalDevice(object):
     """
     This item represents an element that provides channel data to a network.
     """
@@ -29,13 +29,13 @@ class LightingNetworkElement(object):
         The channels dictionary contains a mapping of channel numbers to object
         attributes.
         """
-        self.name = kwargs.get('name', "baselight")
         # signal intensity is the value set by the note on velocity -
         # does not reflect current brightness
         self.channels = {}
         self.intensity = 0
         self.channels[start_channel] = 'intensity'
         self.gamma = None
+        self.start_channel = start_channel
 
     def update_channels(self):
         # apply dimming or other adjustments
@@ -44,6 +44,10 @@ class LightingNetworkElement(object):
             dmx_val = int(self.intensity * 255)
             val = self.gamma[dmx_val]
             self.intensity = val / 255
+
+    def set_intensity(self, intensity):
+        # TODO note this setter may be superfluos
+        self.intensity = intensity
 
     def update_data(self, data):
         """
@@ -67,6 +71,24 @@ class LightingNetworkElement(object):
             # networks are using 1 byte max per channel
             # Here the channel values are highest value wins
             data[channel - 1] = max(data[channel - 1], int(val * 255))
+
+
+class RGBDevice(PhysicalDevice):
+    def __init__(self, *args, **kwargs):
+        super(RGBDevice, self).__init__(*args, **kwargs)
+        # need to add in the self.channels[start_channel+n] = 'red'
+        self.red = 0
+        self.green = 0
+        self.blue = 0
+        self.channels[self.start_channel] = 'red'
+        self.channels[self.start_channel + 1] = 'green'
+        self.channels[self.start_channel + 2] = 'blue'
+        self.gamma = DIYC_DIM
+
+    def update_channels(self):
+        # update RGB only once per cycle here, instead of
+        # every hue update
+        super(RGBDevice, self).update_channels()
 
 
 class BaseLightElement(object):
@@ -116,6 +138,7 @@ class BaseLightElement(object):
         self.trigger_toggle = trigger_toggle
         self.effects = []
         self.pre_update_effects = []
+        self._intensity = 0
 
     def bell_reset(self):
         # TODO is this method still needed?
@@ -163,11 +186,19 @@ class BaseLightElement(object):
         #     print int(self.intensity)
         for effect in self.effects:
             effect.update(show, [self])
+        self.device.set_intensity(self.intensity)
         return self.intensity
 
     def set_intensity(self, intensity):
         # mostly to be overridden by subclasses
-        self.intensity = intensity
+        self._intensity = intensity
+        if hasattr(self, 'device'):
+            self.device.intensity = intensity
+
+    def get_intensity(self):
+        return self._intensity
+
+    intensity = property(get_intensity, set_intensity)
 
     def _on_trigger(self, intensity, **kwargs):
         pass
@@ -181,7 +212,7 @@ class BaseLightElement(object):
     def trigger(self, intensity, **kwargs):
         # @@ need toggle mode implementation here
         if self.simple:
-            self.intensity = intensity
+            self.set_intensity(intensity)
             return
         if intensity > 0 and self.trigger_state == 0:
             if self.bell_mode:
@@ -190,7 +221,7 @@ class BaseLightElement(object):
             [x.trigger(intensity) for x in self.effects]
             self.trigger_intensity = intensity
             logger.debug("%s: trigger on @ %s" % (self.name, intensity))
-            self.intensity = 0.0  # reset light on trigger
+            self.set_intensity(0.0)  # reset light on trigger
             self.adsr_envelope.trigger(state=1)
             self._on_trigger(intensity, **kwargs)
         elif intensity == 0 and (self.trigger_state and not self.trigger_toggle
@@ -213,61 +244,42 @@ class BaseLightElement(object):
         self.trigger(0)
 
 
-class LightElement(BaseLightElement, LightingNetworkElement):
+class LightElement(BaseLightElement, PhysicalDevice):
     """
     This is a composed class that represents a basic light that has both
     behaviors and channel data
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, device_element=None, *args, **kwargs):
         BaseLightElement.__init__(self, *args, **kwargs)
-        LightingNetworkElement.__init__(self, *args, **kwargs)
+        if not device_element:
+            self.device = PhysicalDevice(*args, **kwargs)
+        else:
+            self.device = device_element
 
 
 class RGBLight(LightElement):
 
-    def __init__(self, *args, **kwargs):
-        super(RGBLight, self).__init__(*args, **kwargs)
-        # need to add in the self.channels[start_channel+n] = 'red'
-        start_channel = kwargs.get('start_channel', 1)
-        self.red = 0
-        self.green = 0
-        self.blue = 0
+    def __init__(self, device_element=None, *args, **kwargs):
+        BaseLightElement.__init__(self, *args, **kwargs)
+        if not device_element:
+            self.device = RGBDevice(*args, **kwargs)
+        else:
+            self.device = device_element
         self._hue = 0.0
         self._saturation = 0
-        self.channels[start_channel] = 'red'
-        self.channels[start_channel + 1] = 'green'
-        self.channels[start_channel + 2] = 'blue'
-        self.gamma = DIYC_DIM
         self.normalize = False
-        # set up rgb values
-
-    def set_intensity(self, intensity):
-        self.intensity = intensity
-        self.update_rgb()
 
     def update(self, show):
         return_value = super(RGBLight, self).update(show)
         # TODO - this funciton needed when tweening hue - but can't be used
         # tweening RGB directly
-        # self.update_rgb()
+        self.update_rgb()
         return return_value
-
-    # @@ need to address the attribute of intensity in the context of RGB
-    def update_hue(self):
-        """
-        updates hue property from RGB values, RGB is always updated when hue
-        changed
-        """
-        adjusted_rgb = [x * self.intensity for x in [
-            self.red, self.green, self.blue]]
-        h, s, v = colorsys.rgb_to_hsv(*tuple(adjusted_rgb))
-        self._hue = h
-        self._saturation = s
 
     def update_rgb(self):
         hue = self._hue
         saturation = self._saturation
-        if 'intensity' in self.channels.values():
+        if 'intensity' in self.device.channels.values():
             # if the fixture has its own intensity slider - always calc RGB
             # values at full intensity
             intensity = 1.0
@@ -279,9 +291,12 @@ class RGBLight(LightElement):
             maxval = max((r, g, b))
             adj = maxval / 1
             r, g, b = colorsys.hsv_to_rgb(hue, saturation, intensity * adj)
-        self.red = r
-        self.green = g
-        self.blue = b
+        self.red = self.device.red = r
+        self.green = self.device.green = g
+        self.blue = self.device.blue = b
+
+    # TODO need R, G, B setters - and an update hue mirror
+    #
 
     def _get_hue(self):
         # TODO need to update with function in case r,g,b were updated other
@@ -299,11 +314,17 @@ class RGBLight(LightElement):
         # TODO concept of intensity should be converted to raw RGB for base RGB
         # light no assumption of 4th channel
 
-    def update_channels(self):
-        # update RGB only once per cycle here, instead of
-        # every hue update
-        super(RGBLight, self).update_channels()
-        self.update_rgb()
+    # @@ need to address the attribute of intensity in the context of RGB
+    def update_hue(self):
+        """
+        updates hue property from RGB values, RGB is always updated when hue
+        changed
+        """
+        adjusted_rgb = [x * self.intensity for x in [
+            self.red, self.green, self.blue]]
+        h, s, v = colorsys.rgb_to_hsv(*tuple(adjusted_rgb))
+        self._hue = h
+        self._saturation = s
 
     hue = property(_get_hue, _set_hue)
     saturation = property(_get_saturation, _set_saturation)
@@ -929,8 +950,10 @@ class LightShow(object):
             # pre_send = time.time()
             for n in self.networks:
                 n.send_data()
-            if self.frame == 20:
-                print 'framerate: ', 1 / self.frame_delay, " Remainder: ", remainder
+            if self.frame == 40:
+                # print [e.channels for e in self.networks[1].elements]
+                print('framerate: ', 1 / self.frame_delay, " Remainder: ",
+                        remainder)
                 self.frame = 0
 
     def update(self):
