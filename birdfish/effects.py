@@ -142,12 +142,12 @@ class Twinkle(BaseEffect):
         self.blinkon = True
         self.cycle_elapsed = 0
         self.last_changed = None
-        self.mode = 'darken'
+        # self.mode = 'darken'
+        self.mode = 'modes-disabled'
         self.use_trigger = kwargs.get('use_trigger', True)
         # the parameters of current cycle
         self.on_dur = self.off_dur = self.intensity = 0
         self.durations = {True: self.on_dur, False: self.off_dur}
-        # self.setup_cycle()
 
     def setup_cycle(self):
         self.on_dur = self.on_min + random.random() * (self.on_max
@@ -166,7 +166,7 @@ class Twinkle(BaseEffect):
         # piggy-backed on an elements trigger, if it is to use trigger to
         # cause/manage the effect perhaps an effect should always manipulate
         # the lower level attributes instead of using a trigger
-        self.trigger_state = 1
+        # self.trigger_state = 1
         if self.trigger_state:
             targets = self.get_targets(targets)
             self.cycle_elapsed += show.time_delta
@@ -186,6 +186,7 @@ class Twinkle(BaseEffect):
                         elif self.mode == 'lighten':
                             value = max(t.intensity, self.intensity)
                         else:
+                            # modes currently disabled
                             value = self.intensity
 
                         if self.use_trigger:
