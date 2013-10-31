@@ -103,6 +103,14 @@ class MidiDispatcher(BaseDispatcher):
     def dispatch(self, message):
         """take a midi message and dispatch it to object who are interested"""
         print message
+        if message.type == 'pitchwheel':
+            # pitchwheel(channel=0, value=5224)
+            # print dir(message)
+            # print message.__dict__
+            return
+        if message.type == 'sysex':
+            # skip
+            return
         if message.type == 'control_change':
             message_key = (message.channel, message.control)
         else:
@@ -111,7 +119,10 @@ class MidiDispatcher(BaseDispatcher):
             for destination in self.observers[message_key]:
                 if destination['type'] == 'trigger':
                     # trigger type
-                    vel = message.velocity / 127.0
+                    if message.type == "note_off":
+                        vel = 0
+                    else:
+                        vel = message.velocity / 127.0
                     destination['receiver'].trigger(vel, key=message_key)
                 elif destination['type'] == 'map':
                     in_value = message.value
